@@ -1,1 +1,1 @@
-#Public repository for COSC460
+Some things.
