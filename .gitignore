@@ -1,0 +1,4 @@
+mysimpledb/bin/*.*
+mysimpledb/bin
+mysimpledb/log
+mysimpledb/log/*.*
