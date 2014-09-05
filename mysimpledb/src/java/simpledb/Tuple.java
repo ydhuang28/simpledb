@@ -11,8 +11,19 @@ import java.util.Iterator;
  */
 public class Tuple implements Serializable {
 
+	/** Serialization for concurrency. */
     private static final long serialVersionUID = 1L;
+    
+    /** Schema corresponding to the tuple. */
+    private TupleDesc td;
+    
+    /** Record ID for the tuple. */
+    private RecordId rid;
+    
+    /** An array of fields in the tuple. */
+    private Field[] fieldAr;
 
+    
     /**
      * Create a new tuple with the specified schema (type).
      *
@@ -20,35 +31,43 @@ public class Tuple implements Serializable {
      *           instance with at least one field.
      */
     public Tuple(TupleDesc td) {
-        // some code goes here
-    }
+    	if (td == null) throw new NullPointerException("null TupleDesc");
+    	
+        this.td = td;
+        this.rid = null;
+        this.fieldAr = new Field[td.numFields()];
+    } // end Tuple(TupleDesc)
 
+    
     /**
      * @return The TupleDesc representing the schema of this tuple.
      */
     public TupleDesc getTupleDesc() {
-        // some code goes here
-        return null;
-    }
+        return td;
+    } // end getTupleDesc()
 
+    
     /**
      * @return The RecordId representing the location of this tuple on disk. May
      * be null.
      */
     public RecordId getRecordId() {
-        // some code goes here
-        return null;
-    }
+        return rid;
+    } // end getRecordId()
 
+    
     /**
      * Set the RecordId information for this tuple.
      *
      * @param rid the new RecordId for this tuple.
      */
     public void setRecordId(RecordId rid) {
-        // some code goes here
-    }
+    	if (rid == null) throw new NullPointerException("rid given is null");
+    	
+        this.rid = rid;
+    } // end setRecordId(RecordId)
 
+    
     /**
      * Change the value of the ith field of this tuple.
      *
@@ -56,18 +75,34 @@ public class Tuple implements Serializable {
      * @param f new value for the field.
      */
     public void setField(int i, Field f) {
-        // some code goes here
-    }
+        if (i < 0 || i >= fieldAr.length) {
+        	throw new RuntimeException("invalid index");
+        } else if (f == null) {
+        	throw new NullPointerException("field given is null");
+        }
+        
+        Type ithFieldType = td.getFieldType(i);
+        if (!ithFieldType.equals(f.getType())) {
+        	throw new RuntimeException("types do not agree");
+        }
+        
+        fieldAr[i] = f;
+    } // end setField(int, Field)
 
+    
     /**
      * @param i field index to return. Must be a valid index.
      * @return the value of the ith field, or null if it has not been set.
      */
     public Field getField(int i) {
-        // some code goes here
-        return null;
-    }
+    	if (i < 0 || i >= fieldAr.length) {
+        	throw new RuntimeException("invalid index");
+        }
+    	
+    	return fieldAr[i];
+    } // end getField(int)
 
+    
     /**
      * Returns the contents of this Tuple as a string. Note that to pass the
      * system tests, the format needs to be as follows:
@@ -77,8 +112,24 @@ public class Tuple implements Serializable {
      * where \t is any whitespace, except newline
      */
     public String toString() {
-        // some code goes here
-        throw new UnsupportedOperationException("Implement this");
-    }
+        String str = "";
+        for (int i = 0; i < fieldAr.length; i++) {
+        	if (i < fieldAr.length - 1) {
+        		if (Type.INT_TYPE.equals(fieldAr[i].getType())) {
+            		str += ((IntField) fieldAr[i]).getValue() + "\t";
+            	} else {
+            		str += ((StringField) fieldAr[i]).getValue() + "\t";
+            	}
+        	} else {
+        		if (Type.INT_TYPE.equals(fieldAr[i].getType())) {
+            		str += ((IntField) fieldAr[i]).getValue() + "\r\n";
+            	} else {
+            		str += ((StringField) fieldAr[i]).getValue() + "\r\n";
+            	}
+        	}
+        }
+        
+        return str;
+    } // end toString()
 
-}
+} // end Tuple

@@ -13,18 +13,16 @@ public class TupleDesc implements Serializable {
      */
     public static class TDItem implements Serializable {
 
+    	/** Serialization for concurrency. */
         private static final long serialVersionUID = 1L;
 
-        /**
-         * The type of the field.
-         */
+        /** The type of the field. */
         public final Type fieldType;
 
-        /**
-         * The name of the field.
-         */
+        /** The name of the field. */
         public final String fieldName;
 
+        
         /**
          * Constructor.
          * 
@@ -34,16 +32,20 @@ public class TupleDesc implements Serializable {
         public TDItem(Type t, String n) {
             this.fieldName = n;
             this.fieldType = t;
-        }
+        } // end TDItem(Type, String)
 
+        
         /** 
          * Returns a description of this TDItem.
          */
         public String toString() {
             return fieldName + "(" + fieldType + ")";
-        }
-    }
+        } // end toString()
+        
+    } // end TDItem
 
+    
+    /** Serialization for concurrency. */
     private static final long serialVersionUID = 1L;
     
     /** Array for types of field. */

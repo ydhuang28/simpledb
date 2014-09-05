@@ -17,33 +17,68 @@ import java.util.concurrent.ConcurrentHashMap;
  * @Threadsafe
  */
 public class Catalog {
+	
+	/** Map to store the tables; names as keys. */
+	private Map<String, DbFile> tableMap;
+	
+	/** Map to store the name of the primary fields of the tables, if any. */
+	private Map<String, String> pFieldTableMap;
 
     /**
      * Constructor.
      * Creates a new, empty catalog.
      */
     public Catalog() {
-        // some code goes here
-    }
+        tableMap = new HashMap<String, DbFile>();
+        pFieldTableMap = new HashMap<String, String>();
+    } // end Catalog()
 
+    
     /**
      * Add a new table to the catalog.
      * This table's contents are stored in the specified DbFile.
      *
-     * @param file      the contents of the table to add;  file.getId() is the identfier of
-     *                  this file/tupledesc param for the calls getTupleDesc and getFile
-     * @param name      the name of the table -- may be an empty string.  May not be null.  If a name
+     * @param file      the contents of the table to add;  file.getId() is the identifier of
+     *                  this file/tupledesc parameter for the calls getTupleDesc and getFile
+     * @param name      the name of the table -- may be an empty string.  May not be null.
+     * 					If a name conflict exists, use the last table to be added as the table
+     * 					for a given name.
      * @param pkeyField the name of the primary key field
-     *                  conflict exists, use the last table to be added as the table for a given name.
+     *                  
      */
     public void addTable(DbFile file, String name, String pkeyField) {
-        // some code goes here
-    }
+        if (name == null || file == null)
+        	throw new NullPointerException("null parameter(s)");
+        
+        if (!tableMap.containsKey(name)) {
+        	tableMap.put(name, file);
+        } else {
+        	tableMap.replace(name, file);
+        }
+        
+        // set pkeyField if any
+        if (pkeyField != null) {
+        	if (!"".equals(pkeyField)) {
+        		pFieldTableMap.put(name, pkeyField);
+        	}
+        }
+    } // end addTable(DbFile, String, String)
 
+    
+    /**
+     * Add a new table without a primary key field.
+     * 
+     * @param file the contents of the table to add;  file.getId() is the identifier of
+     *             this file/tupledesc parameter for the calls getTupleDesc and getFile
+     * @param name the name of the table -- may be an empty string.  May not be null.
+     * 			   If a name conflict exists, use the last table to be added as the
+     * 			   table for a given name.
+     */
     public void addTable(DbFile file, String name) {
         addTable(file, name, "");
-    }
+    } // end addTable(DbFile, String)
 
+    
     /**
      * Add a new table to the catalog.
      * This table has tuples formatted using the specified TupleDesc and its
@@ -54,18 +89,22 @@ public class Catalog {
      */
     public void addTable(DbFile file) {
         addTable(file, (UUID.randomUUID()).toString());
-    }
+    } // end addTable(DbFile)
 
+    
     /**
      * Return the id of the table with a specified name,
      *
      * @throws NoSuchElementException if the table doesn't exist
      */
     public int getTableId(String name) throws NoSuchElementException {
-        // some code goes here
-        return 0;
-    }
+        if (!tableMap.containsKey(name)) 
+        	throw new NoSuchElementException("table with specified name DNE");
+        
+        return tableMap.get(name).getId();
+    } // end getTableId(String)
 
+    
     /**
      * Returns the tuple descriptor (schema) of the specified table
      *
@@ -74,10 +113,16 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
-        // some code goes here
-        return null;
-    }
+        for (DbFile t : tableMap.values()) {
+        	if (t.getId() == tableid) {
+        		return t.getTupleDesc();
+        	}
+        }
+        
+        throw new NoSuchElementException("table with specified table id DNE");
+    } // end getTupleDesc(int)
 
+    
     /**
      * Returns the DbFile that can be used to read the contents of the
      * specified table.
@@ -86,32 +131,77 @@ public class Catalog {
      *                function passed to addTable
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
-        // some code goes here
-        return null;
-    }
+    	for (DbFile t : tableMap.values()) {
+        	if (t.getId() == tableid) {
+        		return t;
+        	}
+        }
+        
+        throw new NoSuchElementException("table with specified table id DNE");
+    } // end getDatabaseFile(int)
 
-    public String getPrimaryKey(int tableid) {
-        // some code goes here
-        return null;
-    }
-
-    public Iterator<Integer> tableIdIterator() {
-        // some code goes here
-        return null;
-    }
-
-    public String getTableName(int id) {
-        // some code goes here
-        return null;
-    }
-
+    
     /**
-     * Delete all tables from the catalog
+     * Returns the primary key field name of the table associated
+     * with the table id provided, if one exists; otherwise returns
+     * an empty string.
+     * 
+     * @param tableid id of the table associated with
+     * @return primary key if exists; empty string if not
+     */
+    public String getPrimaryKey(int tableid) {
+    	String keyName = "";
+    	for (String name : tableMap.keySet()) {
+        	if (tableMap.get(name).getId() == tableid) {
+        		if (pFieldTableMap.containsKey(name)) {
+        			keyName = pFieldTableMap.get(name);
+        		}
+        	}
+        }
+    	
+    	return keyName;
+    } // end getPrimaryKey(int)
+
+    
+    /**
+     * @return an iterator over the table ids.
+     */
+    public Iterator<Integer> tableIdIterator() {
+        List<Integer> tableIdList = new ArrayList<Integer>();
+        for (DbFile t : tableMap.values()) {
+        	tableIdList.add(t.getId());
+        }
+        
+        return tableIdList.iterator();
+    } // end tableIdIterator()
+
+    
+    /**
+     * Returns the name of table associated with the given id.
+     * 
+     * @param tableid id of table associated with
+     * @return name of table if exists; null if not
+     */
+    public String getTableName(int tableid) {
+    	for (String name : tableMap.keySet()) {
+        	if (tableMap.get(name).getId() == tableid) {
+        		return name;
+        	}
+        }
+    	
+        return null;
+    } // end getTableName(int)
+
+    
+    /**
+     * Delete all tables from the catalog.
      */
     public void clear() {
-        // some code goes here
-    }
+        tableMap.clear();
+        pFieldTableMap.clear();
+    } // end clear()
 
+    
     /**
      * Reads the schema from a file and creates the appropriate tables in the database.
      *
@@ -166,6 +256,7 @@ public class Catalog {
             System.out.println("Invalid catalog entry : " + line);
             System.exit(0);
         }
-    }
-}
+    } // end loadSchema(String)
+    
+} // end Catalog
 
