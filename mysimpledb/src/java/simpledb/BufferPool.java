@@ -16,11 +16,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * @Threadsafe, all fields are final
  */
 public class BufferPool {
+
     /**
      * Bytes per page, including header.
      */
     public static final int PAGE_SIZE = 4096;
 
+	/** Private field for pagesize. */
     private static int pageSize = PAGE_SIZE;
 
     /**
@@ -29,6 +31,12 @@ public class BufferPool {
      * constructor instead.
      */
     public static final int DEFAULT_PAGES = 50;
+    
+    /** Buffer pool. */
+    private final Page[] buffer;
+    
+    /** Index of most recent page. */
+    private int bufferPt;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -36,7 +44,10 @@ public class BufferPool {
      * @param numPages maximum number of pages in this buffer pool.
      */
     public BufferPool(int numPages) {
-        // some code goes here
+        if (numPages < 0) throw new RuntimeException("negative pages");
+        
+        buffer = new Page[numPages];
+        bufferPt = 0;
     }
 
     public static int getPageSize() {
@@ -65,9 +76,24 @@ public class BufferPool {
      */
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
-        // some code goes here
-        return null;
-    }
+        
+    	for (int i = 0; i < buffer.length; i++) {
+    		if (buffer[i] != null) {
+    			if (pid.equals(buffer[i].getId())) {
+    				return buffer[i];
+    			}
+    		}
+    	}
+    	
+    	Catalog ctlg = Database.getCatalog();
+    	DbFile dbfile = ctlg.getDatabaseFile(pid.getTableId());
+    	
+    	buffer[bufferPt] = dbfile.readPage(pid);
+    	
+    	bufferPt++;
+    	
+    	return buffer[bufferPt];
+    } // end getPage(TransactionId, PageId, Permissions)
 
     /**
      * Releases the lock on a page.
