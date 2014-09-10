@@ -5,6 +5,13 @@ package simpledb;
  */
 public class HeapPageId implements PageId {
 
+	/** Table id being referenced from this page id */
+	private int tableId;
+
+	/** Page number of this page */
+	private int pgNo;
+	
+	
     /**
      * Constructor. Create a page id structure for a specific page of a
      * specific table.
@@ -13,26 +20,28 @@ public class HeapPageId implements PageId {
      * @param pgNo    The page number in that table.
      */
     public HeapPageId(int tableId, int pgNo) {
-        // some code goes here
+        this.tableId = tableId;
+        this.pgNo = pgNo;
     }
 
+    
     /**
      * @return the table associated with this PageId
      */
     public int getTableId() {
-        // some code goes here
-        return 0;
+        return tableId;
     }
 
+    
     /**
      * @return the page number in the table getTableId() associated with
      * this PageId
      */
     public int pageNumber() {
-        // some code goes here
-        return 0;
+        return pgNo;
     }
 
+    
     /**
      * @return a hash code for this page, represented by the concatenation of
      * the table number and the page number (needed if a PageId is used as a
@@ -40,10 +49,11 @@ public class HeapPageId implements PageId {
      * @see BufferPool
      */
     public int hashCode() {
-        // some code goes here
-        throw new UnsupportedOperationException("implement this");
+        return (((Integer) tableId).toString()
+        		+ ((Integer) pgNo).toString()).hashCode();
     }
 
+    
     /**
      * Compares one PageId to another.
      *
@@ -52,10 +62,17 @@ public class HeapPageId implements PageId {
      * ids are the same)
      */
     public boolean equals(Object o) {
-        // some code goes here
-        return false;
+    	if (o == null) {
+    		return false;
+    	} else if (!o.getClass().equals(this.getClass())) {
+    		return false;
+    	}
+    	
+    	HeapPageId other = (HeapPageId) o;
+        return other.pgNo == this.pgNo && other.tableId == this.tableId;
     }
 
+    
     /**
      * Return a representation of this object as an array of
      * integers, for writing to disk.  Size of returned array must contain
