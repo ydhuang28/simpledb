@@ -81,13 +81,17 @@ public class HeapFile implements DbFile {
     		
     		// create byte array, read data
     		byte[] data = new byte[ps];
-    		bis.read(data, offset, ps);
+    		bis.skip(offset);
+    		bis.read(data, 0, ps);
     		
     		HeapPageId hpid = new HeapPageId(getId(), pid.pageNumber());
     		Page page = new HeapPage(hpid, data);
     		
+    		bis.close();
     		return page;
-    	} catch (Exception e) {
+    	} catch (FileNotFoundException fnfe) {
+    		throw new IllegalArgumentException("file not found");
+    	} catch (IOException ioe) {
     		throw new IllegalArgumentException("error when reading file");
     	}
     }

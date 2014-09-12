@@ -83,7 +83,7 @@ public class HeapPage implements Page {
      * 		   with each tuple occupying tupleSize bytes.
      */
     private int getHeaderSize() {
-        return (int) (Math.ceil(numSlots / 8));
+        return (int) (Math.ceil(numSlots / 8.0));
     }
 
     
@@ -311,7 +311,7 @@ public class HeapPage implements Page {
     public boolean isSlotUsed(int i) {
         if (i < 0 || i >= numSlots) return false;
         
-        return ((header[i / Byte.SIZE] >>> (i % Byte.SIZE)) & 0b1) == 0b1;
+        return ((header[i / Byte.SIZE] >>> (i % Byte.SIZE)) & 1) == 1;
     }
 
     

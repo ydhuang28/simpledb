@@ -2,3 +2,6 @@ mysimpledb/bin/*.*
 mysimpledb/bin
 mysimpledb/log
 mysimpledb/log/*.*
+mysimpledb/dist
+mysimpledb/dist/*.*
+
