@@ -90,9 +90,7 @@ public class BufferPool {
     	
     	buffer[bufferPt] = dbfile.readPage(pid);
     	
-    	bufferPt++;
-    	
-    	return buffer[bufferPt];
+    	return buffer[bufferPt++];
     } // end getPage(TransactionId, PageId, Permissions)
 
     /**
