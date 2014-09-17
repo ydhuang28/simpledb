@@ -4,4 +4,7 @@ mysimpledb/log
 mysimpledb/log/*.*
 mysimpledb/dist
 mysimpledb/dist/*.*
-
+.classpath
+.project
+log
+log\*.*
