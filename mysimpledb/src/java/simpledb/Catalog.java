@@ -50,11 +50,7 @@ public class Catalog {
         if (name == null || file == null)
         	throw new NullPointerException("null parameter(s)");
         
-        if (!tableMap.containsKey(name)) {
-        	tableMap.put(name, file);
-        } else {
-        	tableMap.replace(name, file);
-        }
+        tableMap.put(name, file);
         
         // set pkeyField if any
         if (pkeyField != null) {

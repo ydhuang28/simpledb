@@ -9,17 +9,17 @@ Yuxin David Huang.
 
 2. What did you think of this assignment?
 
-<Replace this text with your answer>
+It was rigorous and challenging but fun.
 
 3. What was the hardest part of this assignment?
 
-<Replace this text with your answer>
+HeapFile implementation. I had a hard time trying to grasp readPage().
 
 4. Describe any missing or incomplete elements of your code.
 
-<Replace this text with your answer>
+Not particularly. All tests pass and Lab1Main runs successfully.
 
 5. Roughly how long did you spend working on this lab?
 
-<Replace this text with your answer>
+I would say around 10-12 hours. But I might have overcounted.
 
