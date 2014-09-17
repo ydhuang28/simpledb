@@ -10,8 +10,10 @@ public class RecordId implements Serializable {
 
     private static final long serialVersionUID = 1L;
     
+    /** id of page that this recordId is referring to */
     private PageId pid;
     
+    /** index of tuple on the page */
     private int tupleno;
 
     /**
