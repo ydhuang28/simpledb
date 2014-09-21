@@ -353,18 +353,19 @@ public class HeapPage implements Page {
      *     bitwise-AND the mask with the header to get the new header.
      */
     private void markSlotUsed(int i, boolean value) {
-    	// calculate bit position
+    	// calculate bit position and header byte
     	int bitPos = 1 << (i % Byte.SIZE);
+    	int bytePos = i / Byte.SIZE;
     	
     	// create mask depending on value
-    	byte mask = (byte) (value ? bitPos : (Math.pow(2, Byte.SIZE) - 1) - bitPos);
+    	byte mask = (byte) (value ? bitPos : ~bitPos);
     	
     	// bitwise-OR or AND depending on value
     	if (value) {
-    		header[i / Byte.SIZE] = (byte) (header[i / Byte.SIZE] | mask);
+    		header[bytePos] = (byte) (header[bytePos] | mask);
     		numEmptySlots--;
     	} else {
-    		header[i / Byte.SIZE] = (byte) (header[i / Byte.SIZE] & mask);
+    		header[bytePos] = (byte) (header[bytePos] & mask);
     		numEmptySlots++;
     	}
     } // end markSlotUsed(int, boolean)
