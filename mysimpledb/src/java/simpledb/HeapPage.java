@@ -221,7 +221,8 @@ public class HeapPage implements Page {
         }
 
         // padding
-        int zerolen = BufferPool.getPageSize() - (header.length + td.getSize() * tuples.length); //- numSlots * td.getSize();
+        int zerolen = BufferPool.getPageSize() -
+        		(header.length + td.getSize() * tuples.length); //- numSlots * td.getSize();
         byte[] zeroes = new byte[zerolen];
         try {
             dos.write(zeroes, 0, zerolen);
@@ -263,17 +264,13 @@ public class HeapPage implements Page {
      *                     already empty.
      */
     public void deleteTuple(Tuple t) throws DbException {
-    	
-    	System.out.println(t.getRecordId().tupleno());
     	// argument checking
         if (!pid.equals(t.getRecordId().getPageId())) {
         	throw new DbException("tuple not on this page");
         } else if (!isSlotUsed(t.getRecordId().tupleno())) {
         	throw new DbException("tuple slot already empty");
         }
-        
-        
-        
+
         markSlotUsed(t.getRecordId().tupleno(), false);	// mark not used
     } // end deleteTuple(Tuple)
 
@@ -337,26 +334,30 @@ public class HeapPage implements Page {
     public boolean isSlotUsed(int i) {
         if (i < 0 || i >= numSlots) return false;
         
-        return ((header[i / Byte.SIZE] >>> (i % Byte.SIZE)) & 1) == 1;
+        int bitPos = i % Byte.SIZE;
+    	byte mask = (byte) (1 << bitPos);
+        
+        return ((header[i / Byte.SIZE] & mask) >> bitPos) == 1;
     } // end isSlotUsed(int)
 
     
     /**
      * Abstraction to fill or clear a slot on this page.
      * 
-     * method: if true, create mask such that 1 is on the bit
-     * position and 0 everywhere else, and then bitwise-OR the mask
-     * with the header to get the new header. otherwise, create mask
-     * such that 1 is on every bit except for the bit position for
-     * tuple index i, which has 0, and bitwise-AND the mask with the
-     * header to get the new header.
+     * method:
+     *   if true, create mask such that 1 is on the bit
+     *     position and 0 everywhere else, and then bitwise-OR the mask
+     *     with the header to get the new header.
+     *   otherwise, create mask such that 1 is on every bit except
+     *     for the bit position for tuple index i, which has 0, and
+     *     bitwise-AND the mask with the header to get the new header.
      */
     private void markSlotUsed(int i, boolean value) {
     	// calculate bit position
-    	int bitPos = ((int) Math.pow(2, i % Byte.SIZE)) + 1;
+    	int bitPos = 1 << (i % Byte.SIZE);
     	
     	// create mask depending on value
-    	int mask = (int) (value ? bitPos : Math.pow(2, Byte.SIZE) - bitPos);
+    	byte mask = (byte) (value ? bitPos : (Math.pow(2, Byte.SIZE) - 1) - bitPos);
     	
     	// bitwise-OR or AND depending on value
     	if (value) {

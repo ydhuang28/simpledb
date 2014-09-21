@@ -21,6 +21,9 @@ public class HeapFile implements DbFile {
 	/** Description of tuples stored in this table/heapfile. */
 	private TupleDesc td;
 	
+	/** Number of pages in this table. */
+	private int numPages;
+	
     /**
      * Constructs a heap file backed by the specified file.
      *
@@ -30,7 +33,8 @@ public class HeapFile implements DbFile {
     public HeapFile(File f, TupleDesc td) {
     	osFile = f;
         this.td = td;
-    }
+        numPages = (int) f.length() / BufferPool.getPageSize();
+    } // end HeapFile(File, TupleDesc)
 
     
     /**
@@ -40,7 +44,7 @@ public class HeapFile implements DbFile {
      */
     public File getFile() {
         return osFile;
-    }
+    } // end getFile()
 
     
     /**
@@ -54,7 +58,7 @@ public class HeapFile implements DbFile {
      */
     public int getId() {
         return osFile.getAbsoluteFile().hashCode();
-    }
+    } // end getId()
 
     
     /**
@@ -64,11 +68,11 @@ public class HeapFile implements DbFile {
      */
     public TupleDesc getTupleDesc() {
         return td;
-    }
+    } // end getTupleDesc()
 
     
    /**
-    * See general contract in DbFile.java.
+    * @see DbFile#readPage(PageId)
     */
     public Page readPage(PageId pid) {
     	int ps = BufferPool.getPageSize();
@@ -94,54 +98,110 @@ public class HeapFile implements DbFile {
     	} catch (IOException ioe) {
     		throw new IllegalArgumentException("error when reading file");
     	}
-    }
+    } // end readPage(PageId)
 
     
     /**
-     * See general contract in DbFile.java.
+     * @see DbFile#writePage(Page)
      */
     public void writePage(Page page) throws IOException {
-        // some code goes here
-        // not necessary for lab1
-    }
+        RandomAccessFile raf = new RandomAccessFile(osFile, "rw");
+        
+        int offset = page.getId().pageNumber() * BufferPool.getPageSize();
+        raf.skipBytes(offset);
+        raf.write(page.getPageData());
+    } // end writePage(Page)
 
     
     /**
      * Returns the number of pages in this HeapFile.
      */
     public int numPages() {
-        return (int) osFile.length() / BufferPool.getPageSize();
-    }
-
+        return numPages;
+    } // end numPages()
     
     /**
-     * See general contract in DbFile.java.
+     * @see DbFile#insertTuple(TransactionId, Tuple)
      */
     public ArrayList<Page> insertTuple(TransactionId tid, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
-        // some code goes here
-        return null;
-        // not necessary for lab1
-    }
+    	// argument checking
+    	if (!td.equals(t.getTupleDesc())) {
+    		throw new DbException("TupleDesc mismatch");
+    	}
+    	
+    	// look for page with empty slot(s)
+    	for (int pgNo = 0; pgNo < this.numPages(); pgNo++) {
+    		HeapPageId pid = new HeapPageId(getId(), pgNo);
+    		HeapPage page = (HeapPage) Database.getBufferPool()
+    				.getPage(tid, pid, Permissions.READ_WRITE);
+    		
+    		// find page with empty slot
+    		if (page.getNumEmptySlots() != 0) {
+    			page.insertTuple(t);
+    			ArrayList<Page> returned1 = new ArrayList<Page>();
+    	    	returned1.add(page);
+    			return returned1;
+    		}
+    	}
+    	
+    	// no page with empty slot! create new page
+    	HeapPage newpage = new HeapPage(new HeapPageId(getId(), numPages()),
+    			HeapPage.createEmptyPageData());
+    	newpage.insertTuple(t);
+    	
+    	// begin writeout
+    	appendToFile(newpage);
+    	numPages++;
+    	
+    	// return modified page
+    	ArrayList<Page> returned2 = new ArrayList<Page>();
+    	returned2.add(newpage);
+        return returned2;
+    } // end insertTuple(TransactionId, Tuple)
 
     
     /**
-     * See general contract in DbFile.java.
+     * @see DbFile#deleteTuple(TransactionId, Tuple)
      */
     public ArrayList<Page> deleteTuple(TransactionId tid, Tuple t) throws DbException,
             TransactionAbortedException {
-        // some code goes here
-        return null;
-        // not necessary for lab1
-    }
+    	// argument checking
+    	if (getId() != t.getRecordId().getPageId().getTableId()) {
+    		throw new DbException("tuple not member of file");
+    	}
+        
+    	HeapPage page = (HeapPage) Database.getBufferPool()
+    			.getPage(tid, t.getRecordId().getPageId(), Permissions.READ_WRITE);
+    	page.deleteTuple(t);
+    	
+    	ArrayList<Page> returned = new ArrayList<Page>();
+    	returned.add(page);
+        return returned;
+        
+    } // end deleteTuple(TransactionId, Tuple)
 
     
     /**
-     * See general contract in DbFile.java.
+     * @see DbFile#iterator(TransactionId)
      */
     public DbFileIterator iterator(TransactionId tid) {
         return new HeapFileIterator(tid, this, td);
-    }
+    } // end iterator(TransactionId)
+    
+    
+    /**
+     * Appends a page to the end of this HeapFile.
+     * 
+     * @param page the page to append
+     */
+    private void appendToFile(HeapPage page) throws IOException {
+    	BufferedOutputStream bos = new BufferedOutputStream(
+    			new FileOutputStream(osFile, true));
+    		
+    	bos.write(page.getPageData());
+    	bos.close();
+    } // end appendToFile(page)
     
     
     /**
@@ -173,6 +233,9 @@ public class HeapFile implements DbFile {
     	/** This heap file. */
     	private HeapFile hf;
     	
+    	/** Read only or read/write for some given instance */
+    	private Permissions permission;
+    	
     	/** Override default constructor. */
     	private HeapFileIterator() {}
     	
@@ -180,16 +243,34 @@ public class HeapFile implements DbFile {
     	/**
     	 * Constructs a new iterator for this HeapFile.
     	 * 
-    	 * @param tid 	transaction id provided by caller
-    	 * @param f		file to iterate over
+    	 * @param tid	transaction id provided by caller
+    	 * @param hf	file to iterate over
     	 * @param td	TupleDesc for the file to iterate over
+    	 * @param p		permission of the iterator
     	 */
-    	private HeapFileIterator(TransactionId tid, HeapFile hf, TupleDesc td) {
+    	private HeapFileIterator(TransactionId tid,
+    							 HeapFile hf,
+    							 TupleDesc td,
+    							 Permissions p) {
     		currPgNo = 0;
     		opened = false;
     		this.td = td;
     		this.tid = tid;
     		this.hf = hf;
+    		permission = p;
+    	}
+    	
+    	
+    	/**
+    	 * Constructs a new iterator for this HeapFile.
+    	 * Use default permission (read only).
+    	 * 
+    	 * @param tid 	transaction id provided by caller
+    	 * @param f		file to iterate over
+    	 * @param td	TupleDesc for the file to iterate over
+    	 */
+    	private HeapFileIterator(TransactionId tid, HeapFile hf, TupleDesc td) {
+    		this(tid, hf, td, Permissions.READ_ONLY);
     	} // end HeapFileIterator(TransactionId, File, TupleDesc)
     	
     	
@@ -200,7 +281,7 @@ public class HeapFile implements DbFile {
     	public void open() throws DbException, TransactionAbortedException {
     		HeapPageId hpid = new HeapPageId(hf.getId(), currPgNo);
     		HeapPage hp = (HeapPage) Database.getBufferPool()
-				  	.getPage(tid, hpid, Permissions.READ_ONLY);
+				  	.getPage(tid, hpid, permission);
     		
     		currPgItr = hp.iterator();
     		opened = true;

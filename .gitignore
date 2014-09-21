@@ -8,3 +8,5 @@ mysimpledb/dist/*.*
 .project
 log
 log\*.*
+.DS_Store
+mysimpledb/.DS_Store
