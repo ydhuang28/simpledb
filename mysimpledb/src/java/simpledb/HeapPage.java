@@ -23,8 +23,6 @@ public class HeapPage implements Page {
     
     private boolean dirty;
     private TransactionId lastTrnsctnToDirty;
-    
-    private int numEmptySlots;
 
     
     /**
@@ -50,6 +48,7 @@ public class HeapPage implements Page {
         this.numSlots = getNumTuples();
         this.dirty = false;
         this.lastTrnsctnToDirty = null;
+        
         DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data));
 
         // allocate and read the header slots of this page
@@ -58,12 +57,10 @@ public class HeapPage implements Page {
             header[i] = dis.readByte();
 
         tuples = new Tuple[numSlots];
-        this.numEmptySlots = numSlots;
         try {
             // allocate and read the actual records of this page
             for (int i = 0; i < tuples.length; i++)
                 tuples[i] = readNextTuple(dis, i);
-            	numEmptySlots--;
         } catch (NoSuchElementException e) {
             e.printStackTrace();
         }
@@ -251,7 +248,7 @@ public class HeapPage implements Page {
      */
     public static byte[] createEmptyPageData() {
         int len = BufferPool.getPageSize();
-        return new byte[len]; //all 0
+        return new byte[len]; // all 0
     } // end createEmptyPageData()
 
     
@@ -274,6 +271,7 @@ public class HeapPage implements Page {
         markSlotUsed(t.getRecordId().tupleno(), false);	// mark not used
     } // end deleteTuple(Tuple)
 
+    private int insertC = 0;
     
     /**
      * Adds the specified tuple to the page;  the tuple should be updated to reflect
@@ -284,6 +282,10 @@ public class HeapPage implements Page {
      *                     is mismatch.
      */
     public void insertTuple(Tuple t) throws DbException {
+    	System.out.println("count = " + (insertC++));
+    	System.out.println("pgNo = " + getId().pageNumber());
+    	System.out.println("tableid = " + getId().getTableId());
+    	
     	// argument checking
         if (getNumEmptySlots() == 0) {
         	throw new DbException("no empty slots");
@@ -292,12 +294,14 @@ public class HeapPage implements Page {
         }
         
         int insertPos = 0;								// find empty spot
-        while (isSlotUsed(insertPos++));				// increment until not used
+        for (; insertPos < numSlots; insertPos++) {
+        	if (!isSlotUsed(insertPos)) break;			// break if empty
+        }
         
         tuples[insertPos] = t;							// insert tuple
         markSlotUsed(insertPos, true);					// mark slot used
         
-        t.setRecordId(new RecordId(pid, insertPos));	// set record id correctly
+        t.setRecordId(new RecordId(pid, insertPos));	// set record id
     } // end insertTuple(Tuple)
 
     
@@ -324,7 +328,13 @@ public class HeapPage implements Page {
      * Returns the number of empty slots on this page.
      */
     public int getNumEmptySlots() {
-        return numEmptySlots;
+        int count = 0;
+        for (int i = 0; i < numSlots; i++) {
+        	if (!isSlotUsed(i)) {
+        		count++;
+        	}
+        }
+        return count;
     } // end getNumEmptySlots()
     
     
@@ -334,10 +344,9 @@ public class HeapPage implements Page {
     public boolean isSlotUsed(int i) {
         if (i < 0 || i >= numSlots) return false;
         
-        int bitPos = i % Byte.SIZE;
-    	byte mask = (byte) (1 << bitPos);
+        int bitPos = i % 8;
         
-        return ((header[i / Byte.SIZE] & mask) >> bitPos) == 1;
+        return ((header[i / 8] >>> bitPos) & 1) == 1;
     } // end isSlotUsed(int)
 
     
@@ -358,15 +367,13 @@ public class HeapPage implements Page {
     	int bytePos = i / Byte.SIZE;
     	
     	// create mask depending on value
-    	byte mask = (byte) (value ? bitPos : ~bitPos);
+    	byte mask = (byte) (value ? bitPos : (int) (255 - bitPos));
     	
     	// bitwise-OR or AND depending on value
     	if (value) {
     		header[bytePos] = (byte) (header[bytePos] | mask);
-    		numEmptySlots--;
     	} else {
     		header[bytePos] = (byte) (header[bytePos] & mask);
-    		numEmptySlots++;
     	}
     } // end markSlotUsed(int, boolean)
 

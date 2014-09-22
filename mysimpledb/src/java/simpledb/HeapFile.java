@@ -21,8 +21,6 @@ public class HeapFile implements DbFile {
 	/** Description of tuples stored in this table/heapfile. */
 	private TupleDesc td;
 	
-	/** Number of pages in this table. */
-	private int numPages;
 	
     /**
      * Constructs a heap file backed by the specified file.
@@ -33,7 +31,6 @@ public class HeapFile implements DbFile {
     public HeapFile(File f, TupleDesc td) {
     	osFile = f;
         this.td = td;
-        numPages = (int) f.length() / BufferPool.getPageSize();
     } // end HeapFile(File, TupleDesc)
 
     
@@ -117,8 +114,10 @@ public class HeapFile implements DbFile {
      * Returns the number of pages in this HeapFile.
      */
     public int numPages() {
-        return numPages;
+        return (int) Math.ceil(osFile.length() / BufferPool.getPageSize());
     } // end numPages()
+    
+    int pagesCreated = 0;
     
     /**
      * @see DbFile#insertTuple(TransactionId, Tuple)
@@ -131,33 +130,39 @@ public class HeapFile implements DbFile {
     	}
     	
     	// look for page with empty slot(s)
-    	for (int pgNo = 0; pgNo < this.numPages(); pgNo++) {
+    	int pgNo = 0;
+    	ArrayList<Page> rv = new ArrayList<Page>();
+    	for (; pgNo < this.numPages(); pgNo++) {
     		HeapPageId pid = new HeapPageId(getId(), pgNo);
     		HeapPage page = (HeapPage) Database.getBufferPool()
     				.getPage(tid, pid, Permissions.READ_WRITE);
     		
     		// find page with empty slot
     		if (page.getNumEmptySlots() != 0) {
+    			assert page.getNumEmptySlots() != 0;
     			page.insertTuple(t);
-    			ArrayList<Page> returned1 = new ArrayList<Page>();
-    	    	returned1.add(page);
-    			return returned1;
+    			rv.add(page);
+    			return rv;
     		}
     	}
     	
     	// no page with empty slot! create new page
-    	HeapPage newpage = new HeapPage(new HeapPageId(getId(), numPages()),
+    	System.out.println("new page inserted! no. " + (++pagesCreated));
+    	HeapPage newpage = new HeapPage(new HeapPageId(getId(), pgNo),
     			HeapPage.createEmptyPageData());
     	newpage.insertTuple(t);
     	
-    	// begin writeout
-    	appendToFile(newpage);
-    	numPages++;
+    	// begin write out
+    	BufferedOutputStream bos = new BufferedOutputStream(
+    			new FileOutputStream(osFile, true));
+    	bos.write(newpage.getPageData());
+    	bos.flush();
+    	bos.close();
     	
     	// return modified page
-    	ArrayList<Page> returned2 = new ArrayList<Page>();
-    	returned2.add(newpage);
-        return returned2;
+    	rv.add(newpage);
+    	System.out.println("returned new page! no. " + (pagesCreated));
+        return rv;
     } // end insertTuple(TransactionId, Tuple)
 
     
@@ -188,20 +193,6 @@ public class HeapFile implements DbFile {
     public DbFileIterator iterator(TransactionId tid) {
         return new HeapFileIterator(tid, this, td);
     } // end iterator(TransactionId)
-    
-    
-    /**
-     * Appends a page to the end of this HeapFile.
-     * 
-     * @param page the page to append
-     */
-    private void appendToFile(HeapPage page) throws IOException {
-    	BufferedOutputStream bos = new BufferedOutputStream(
-    			new FileOutputStream(osFile, true));
-    		
-    	bos.write(page.getPageData());
-    	bos.close();
-    } // end appendToFile(page)
     
     
     /**

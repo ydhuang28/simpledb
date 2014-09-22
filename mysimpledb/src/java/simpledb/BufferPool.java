@@ -100,7 +100,7 @@ public class BufferPool {
             throws TransactionAbortedException, DbException {
         
     	for (int i = 0; i < buffer.length; i++) {
-    		if (buffer[i] != null) {
+    		if (isSlotUsed(i)) {
     			if (pid.equals(buffer[i].getId())) {
     				return buffer[i];
     			}
@@ -118,6 +118,7 @@ public class BufferPool {
     	
     	buffer[emptyI] = dbfile.readPage(pid);
     	pageTime[emptyI] = System.currentTimeMillis();
+    	markSlot(emptyI, true);
     	
     	return buffer[emptyI];
     } // end getPage(TransactionId, PageId, Permissions)
@@ -196,12 +197,16 @@ public class BufferPool {
         
         // mark modified page dirty
         modified.get(0).markDirty(true, tid);
+        Iterator<Tuple> iter = ((HeapPage) (modified.get(0))).iterator();
+        while (iter.hasNext()) System.out.println(iter.next());
         
         // update cached version(s)
         for (int i = 0; i < buffer.length; i++) {
-        	if (buffer[i].getId().equals(modified.get(0).getId())) {
-        		buffer[i] = modified.get(0);
-        		return;
+        	if (isSlotUsed(i)) {
+        		if (buffer[i].getId().equals(modified.get(0).getId())) {
+            		buffer[i] = modified.get(0);
+            		return;
+            	}
         	}
         }
     }
@@ -233,9 +238,9 @@ public class BufferPool {
     		try {
     			plist = f.deleteTuple(tid, t);
     		} catch (DbException dbe) {
+    			dbe.printStackTrace();
     			continue;
     		}
-    		
     	}
     	
     	// mark dirty bit
@@ -254,7 +259,7 @@ public class BufferPool {
      */
     public synchronized void flushAllPages() throws IOException {
     	for (int i = 0; i < buffer.length; i++) {
-        	if (!isSlotUsed(i)) {
+        	if (isSlotUsed(i)) {
         		flushPage(buffer[i].getId());
         	}
         }
@@ -281,9 +286,11 @@ public class BufferPool {
     private synchronized void flushPage(PageId pid) throws IOException {
     	// find page
     	Page pToFlush = null;
-    	for (Page p : buffer) {
-    		if (p.getId().equals(pid))
-    			pToFlush = p;
+    	for (int i = 0; i < buffer.length; i++) {
+    		if (isSlotUsed(i)) {
+    			if (buffer[i].getId().equals(pid))
+        			pToFlush = buffer[i];
+    		}
     	}
     	
     	// write page to disk
@@ -330,15 +337,14 @@ public class BufferPool {
      */
     private int findEmptySlot() {
     	int emptyI = 0;
-    	while (isSlotUsed(emptyI++));
-    	if (emptyI >= numPages) {
-    		return -1;
+    	for (; emptyI < numPages; emptyI++) {
+    		if (!isSlotUsed(emptyI)) return emptyI;
     	}
-    	return emptyI;
+    	return -1;
     }
     
     /**
-     * Abstraction for marking slot
+     * Abstraction for marking slot.
      * 
      * @param slotI
      * @param isdirty

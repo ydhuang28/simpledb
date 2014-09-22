@@ -114,18 +114,10 @@ public class Tuple implements Serializable {
     public String toString() {
         String str = "";
         for (int i = 0; i < fieldAr.length; i++) {
-        	if (i < fieldAr.length - 1) {
-        		if (Type.INT_TYPE.equals(fieldAr[i].getType())) {
-            		str += ((IntField) fieldAr[i]).getValue() + "\t";
-            	} else {
-            		str += ((StringField) fieldAr[i]).getValue() + "\t";
-            	}
+        	if (Type.INT_TYPE.equals(fieldAr[i].getType())) {
+        		str += ((IntField) fieldAr[i]).getValue() + " ";
         	} else {
-        		if (Type.INT_TYPE.equals(fieldAr[i].getType())) {
-            		str += ((IntField) fieldAr[i]).getValue() + "\r\n";
-            	} else {
-            		str += ((StringField) fieldAr[i]).getValue() + "\r\n";
-            	}
+        		str += ((StringField) fieldAr[i]).getValue() + " ";
         	}
         }
         
