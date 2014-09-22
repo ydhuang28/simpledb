@@ -268,10 +268,9 @@ public class HeapPage implements Page {
         	throw new DbException("tuple slot already empty");
         }
 
-        markSlotUsed(t.getRecordId().tupleno(), false);	// mark not used
+        markSlotUsed(t.getRecordId().tupleno(), false);			// mark not used
     } // end deleteTuple(Tuple)
-
-    private int insertC = 0;
+    
     
     /**
      * Adds the specified tuple to the page;  the tuple should be updated to reflect
@@ -282,10 +281,6 @@ public class HeapPage implements Page {
      *                     is mismatch.
      */
     public void insertTuple(Tuple t) throws DbException {
-    	System.out.println("count = " + (insertC++));
-    	System.out.println("pgNo = " + getId().pageNumber());
-    	System.out.println("tableid = " + getId().getTableId());
-    	
     	// argument checking
         if (getNumEmptySlots() == 0) {
         	throw new DbException("no empty slots");
