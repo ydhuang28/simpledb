@@ -147,7 +147,6 @@ public class HeapFile implements DbFile {
     	}
     	
     	// no page with empty slot! create new page
-    	System.out.println("new page inserted! no. " + (++pagesCreated));
     	HeapPage newpage = new HeapPage(new HeapPageId(getId(), pgNo),
     			HeapPage.createEmptyPageData());
     	newpage.insertTuple(t);
@@ -161,7 +160,6 @@ public class HeapFile implements DbFile {
     	
     	// return modified page
     	rv.add(newpage);
-    	System.out.println("returned new page! no. " + (pagesCreated));
         return rv;
     } // end insertTuple(TransactionId, Tuple)
 
