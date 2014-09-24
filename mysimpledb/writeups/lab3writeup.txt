@@ -39,8 +39,16 @@ Answer the questions from the lab description here.  Questions 8 and 9 do not re
 	 return list
 
 7. Here is a pseudocode implementation using pipelining and iterators:
-	 while iterR.hasNext
-	 	 if t1 == null do
+	 if NOT(iterR.hasNext) AND NOT(iterS.hasNext) do
+	 	 if t1 == null OR NOT(t1 and t2 match predicate) do
+	 	 	 return null
+	 	 else if t1 and t2 match predicate do
+	 	 	 return merge(t1, t2)
+	 	 end if
+	 end if
+	 
+	 while TRUE
+	 	 if t1 == null AND iterR.hasNext do
 	 	 	 t1 <- iterR.next
 	 	 end if
 	 	 while iterS.hasNext do
@@ -50,9 +58,12 @@ Answer the questions from the lab description here.  Questions 8 and 9 do not re
 	 	 	 end if
 	 	 end while
 	 	 iterS.rewind
-	 	 t1 <- iterR.next
+	 	 if iterR.hasNext do
+	 	 	 t1 <- iterR.next
+	 	 else do
+	 	 	 exit while
+	 	 end if
 	 end while
-	 return null
 	 	 
 8, 9 works (mentally for me) when I try them out.
 
