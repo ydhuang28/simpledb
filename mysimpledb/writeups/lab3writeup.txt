@@ -3,19 +3,60 @@ Report for Lab 3
 
 Answer the questions from the lab description here.  Questions 8 and 9 do not require answers.
 
-1.
-2.
-3.
-4.
-5.
-6.
-7.
+1. The classes are MockScan, Operator, SeqScan, and TupleIterator.
+
+2. Subclasses: Aggregate, Delete, Filter, Insert, Join, OrderBy, and Project.
+
+3. Select (Filter), projection (Project), and join (Join) is supported
+	 as subclasses of Operator.
+	 
+4. Filter extends Operator; in Operator, hasNext() and next() is handled
+	 (implemented) by fetchNext(), which is implemented in Filter.
+	 
+5. Here is a pseudocode implementation of Filter using pipelining:
+	 curr <- null
+	 while iterR.hasNext do
+	 	 curr <- iterR.next
+	 	 if curr matches predicate do
+	 	 	 exit while
+	 	 end if
+	 end while
+	 return curr
+	 
+6. Here is a pseudocode implementation using iterators:
+	 list <- []
+	 while iterR.hasNext do
+	 	 currR <- iterR.next
+	 	 while iterS.hasNext do
+	 	 	 currS <- iterS.next
+	 	 	 if currR and currS match predicate do
+	 	 	 	 RSmerge <- merge(currR, currS)
+	 	 	 	 list.append(RSmerge)
+	 	 	 end if
+	 	 end while
+	 	 iterS.rewind
+	 end while
+	 return list
+
+7. Here is a pseudocode implementation using pipelining and iterators:
+	 while iterR.hasNext do
+	 	 t1 <- iterR.next
+	 	 while iterS.hasNext do
+	 	 	 t2 <- iterS.next
+	 	 	 if t1 and t2 match predicate do
+	 	 	 	 return merge(t1, t2)
+	 	 	 end if
+	 	 end while
+	 	 iterS.rewind
+	 end while
+	 
+8, 9 works (mentally for me) when I try them out.
 
 After you complete lab 3, please answer the following questions.  
 
 1. What is your name?  If you work with a partner, be sure to write both of your names.
 
-<Replace this text with your answer>
+Yuxin David Huang
 
 2. What did you think of this assignment?
 
