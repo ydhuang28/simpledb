@@ -39,11 +39,10 @@ Answer the questions from the lab description here.  Questions 8 and 9 do not re
 	 return list
 
 7. Here is a pseudocode implementation using pipelining and iterators:
-	 if t1 == null do
-	 	 t1 <- iterR.next
-	 end if
-	 
 	 while iterR.hasNext
+	 	 if t1 == null do
+	 	 	 t1 <- iterR.next
+	 	 end if
 	 	 while iterS.hasNext do
 	 	 	 t2 <- iterS.next
 	 	 	 if t1 and t2 match predicate do
@@ -53,6 +52,7 @@ Answer the questions from the lab description here.  Questions 8 and 9 do not re
 	 	 iterS.rewind
 	 	 t1 <- iterR.next
 	 end while
+	 return null
 	 	 
 8, 9 works (mentally for me) when I try them out.
 
