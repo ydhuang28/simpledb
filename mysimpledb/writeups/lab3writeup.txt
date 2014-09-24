@@ -39,11 +39,15 @@ Answer the questions from the lab description here.  Questions 8 and 9 do not re
 	 return list
 
 7. Here is a pseudocode implementation using pipelining and iterators:
-	 if NOT(iterR.hasNext) AND NOT(iterS.hasNext) do
-	 	 if t1 == null OR NOT(t1 and t2 match predicate) do
+	 if NOT(iterR.hasNext) do
+	 	 if t1 == null do
 	 	 	 return null
-	 	 else if t1 and t2 match predicate do
-	 	 	 return merge(t1, t2)
+	 	 else if NOT(iterS.hasNext) do 
+	 	 	 if t1 and t2 match predicate do
+	 	 	 	 return merge(t1, t2)
+	 	 	 else
+	 	 	 	 return null
+	 	 	 end if
 	 	 end if
 	 end if
 	 
