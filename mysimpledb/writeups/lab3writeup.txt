@@ -18,10 +18,9 @@ Answer the questions from the lab description here.  Questions 8 and 9 do not re
 	 while iterR.hasNext do
 	 	 curr <- iterR.next
 	 	 if curr matches predicate do
-	 	 	 exit while
+	 	 	 return curr
 	 	 end if
 	 end while
-	 return curr
 	 
 6. Here is a pseudocode implementation using iterators:
 	 list <- []

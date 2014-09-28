@@ -19,6 +19,9 @@ public class Filter extends Operator {
     /** Flag indicating whether the iterator is open. */
     private boolean opened;
     
+    /** For iterator use. */
+    private Tuple next;
+    
     
     /**
      * Constructor accepts a predicate to apply and a child operator to read
@@ -30,6 +33,7 @@ public class Filter extends Operator {
     public Filter(Predicate p, DbIterator child) {
         this.p = p;
         this.child = child;
+        this.next = null;
         opened = false;
     } // end Filter(Predicate, DbIterator)
 
@@ -97,16 +101,13 @@ public class Filter extends Operator {
         	throw new DbException("iterator not opened");
         }
         
-        Tuple next = null;
-        
         // get next tuple
         while (child.hasNext()) {
         	next = child.next();
-        	if (!p.filter(next)) next = null;	// filter tuple
-        	if (next != null) break;			// break if found
+        	if (p.filter(next)) return next;	// filter tuple
         }
         
-        return next;
+        return null;
     } // end fetchNext()
 
     
