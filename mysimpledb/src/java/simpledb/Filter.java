@@ -7,8 +7,19 @@ import java.util.*;
  */
 public class Filter extends Operator {
 
+	/** Serialization. */
     private static final long serialVersionUID = 1L;
-
+    
+    /** Predicate associated with this select. */
+    private Predicate p;
+    
+    /** Child iterator/previous operator in pipeline. */
+    private DbIterator child;
+    
+    /** Flag indicating whether the iterator is open. */
+    private boolean opened;
+    
+    
     /**
      * Constructor accepts a predicate to apply and a child operator to read
      * tuples to filter from.
@@ -17,32 +28,60 @@ public class Filter extends Operator {
      * @param child The child operator
      */
     public Filter(Predicate p, DbIterator child) {
-        // some code goes here
-    }
+        this.p = p;
+        this.child = child;
+        opened = false;
+    } // end Filter(Predicate, DbIterator)
 
+    
+    /**
+     * @return the predicate associated with this select.
+     */
     public Predicate getPredicate() {
-        // some code goes here
-        return null;
-    }
+        return p;
+    } // end getPredicate()
 
+    
+    /**
+     * @return TupleDesc associated with the tuples returned by this select.
+     */
     public TupleDesc getTupleDesc() {
-        // some code goes here
-        return null;
-    }
+        return child.getTupleDesc();
+    } // end getTupleDesc()
 
+    
+    /**
+     * Opens the iterator.
+     */
     public void open() throws DbException, NoSuchElementException,
             TransactionAbortedException {
-        // some code goes here
-    }
+    	child.open();
+    	super.open();
+        opened = true;
+    } // end open()
 
+    
+    /**
+     * Closes the iterator.
+     */
     public void close() {
-        // some code goes here
-    }
+        opened = false;
+        super.close();
+        child.close();
+    } // end close()
 
+    
+    /**
+     * Rewinds the iterator; resets pointer to the first tuple.
+     */
     public void rewind() throws DbException, TransactionAbortedException {
-        // some code goes here
-    }
+    	if (!opened) {
+    		throw new DbException("iterator not opened");
+    	}
+        child.rewind();
+    } // end rewind()
 
+    
     /**
      * AbstractDbIterator.readNext implementation. Iterates over tuples from the
      * child operator, applying the predicate to them and returning those that
@@ -54,19 +93,38 @@ public class Filter extends Operator {
      */
     protected Tuple fetchNext() throws NoSuchElementException,
             TransactionAbortedException, DbException {
-        // some code goes here
-        return null;
-    }
+        if (!opened) {
+        	throw new DbException("iterator not opened");
+        }
+        
+        Tuple next = null;
+        
+        // get next tuple
+        while (child.hasNext()) {
+        	next = child.next();
+        	if (!p.filter(next)) next = null;	// filter tuple
+        	if (next != null) break;			// break if found
+        }
+        
+        return next;
+    } // end fetchNext()
 
+    
+    /**
+     * @see Operator#getChildren()
+     */
     @Override
     public DbIterator[] getChildren() {
-        // some code goes here
-        return null;
-    }
+    	DbIterator[] rv = {child};
+        return rv;
+    } // end getChildren()
 
+    
+    /**
+     * @see Operator#setChildren(DbIterator[])
+     */
     @Override
     public void setChildren(DbIterator[] children) {
-        // some code goes here
-    }
-
-}
+        child = children[0];
+    } // end setChildren(DbIterator[])
+} // end Filter

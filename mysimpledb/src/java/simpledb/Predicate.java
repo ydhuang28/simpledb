@@ -10,7 +10,7 @@ public class Predicate implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * Constants used for return codes in Field.compare
+     * Constants used for return codes in Field.compare.
      */
     public enum Op implements Serializable {
         EQUALS, GREATER_THAN, LESS_THAN, LESS_THAN_OR_EQ, GREATER_THAN_OR_EQ, LIKE, NOT_EQUALS;
@@ -23,8 +23,12 @@ public class Predicate implements Serializable {
          */
         public static Op getOp(int i) {
             return values()[i];
-        }
+        } // end getOp(int)
 
+        
+        /**
+         * Returns the operation as a string (\<, \>, =), etc.
+         */
         public String toString() {
             if (this == EQUALS)
                 return "=";
@@ -41,9 +45,19 @@ public class Predicate implements Serializable {
             if (this == NOT_EQUALS)
                 return "<>";
             throw new IllegalStateException("impossible to reach here");
-        }
+        } // end toString
 
-    }
+    } // end Op
+    
+    /** Field number of passed in tuples to compare against.*/
+    private int fieldNo;
+    
+    /** Operation for comparison. */
+    private Op op;
+    
+    /** Field value to compare to. */
+    private Field operand;
+    
 
     /**
      * Constructor.
@@ -53,33 +67,36 @@ public class Predicate implements Serializable {
      * @param operand field value to compare passed in tuples to
      */
     public Predicate(int field, Op op, Field operand) {
-        // some code goes here
-    }
+        this.fieldNo = field;
+        this.op = op;
+        this.operand = operand;
+    } // end Predicate(int, Op, Field)
 
+    
     /**
      * @return the field number
      */
     public int getField() {
-        // some code goes here
-        return -1;
-    }
+        return fieldNo;
+    } // end getField()
 
+    
     /**
      * @return the operator
      */
     public Op getOp() {
-        // some code goes here
-        return null;
-    }
+        return op;
+    } // end getOp()
 
+    
     /**
      * @return the operand
      */
     public Field getOperand() {
-        // some code goes here
-        return null;
-    }
+        return operand;
+    } // end getOperand()
 
+    
     /**
      * Compares the field number of t specified in the constructor to the
      * operand field specified in the constructor using the operator specific in
@@ -90,16 +107,16 @@ public class Predicate implements Serializable {
      * @return true if the comparison is true, false otherwise.
      */
     public boolean filter(Tuple t) {
-        // some code goes here
-        return false;
-    }
+        return t.getField(fieldNo).compare(op, operand);
+    } // end filter(Tuple)
 
+    
     /**
      * Returns something useful, like "f = field_id op = op_string operand =
      * operand_string
      */
     public String toString() {
-        // some code goes here
-        return "";
-    }
-}
+        return "fieldid = " + fieldNo + "; op = " + op
+        		+ "; operand = " + operand;
+    } // end toString()
+} // end Predicate
