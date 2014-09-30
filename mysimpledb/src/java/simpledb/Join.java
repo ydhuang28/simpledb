@@ -195,46 +195,10 @@ public class Join extends Operator {
     
     
     private String[] getFieldNames(DbIterator i1, DbIterator i2) {
-//    	Tuple sample1 = null;
-//    	Tuple sample2 = null;
-//    	try {
-//			i1.open();
-//			i2.open();
-//	    	
-//	    	if (i1.hasNext()) {
-//	    		sample1 = i1.next();
-//	    	}
-//	    	if (i2.hasNext()) {
-//	    		sample2 = i2.next();
-//	    	}
-//	    	
-//	    	i1.rewind();
-//	    	i1.close();
-//	    	i2.rewind();
-//	    	i2.close();
-//		} catch (DbException e) {
-//			e.printStackTrace();
-//		} catch (TransactionAbortedException e) {
-//			e.printStackTrace();
-//		}
-//    	
-//    	
-//    	String fName1 = null;
-//    	if (sample1 != null) {
-//    		System.out.println("here");
-//    		System.out.println(sample1);
-//    		System.out.println(sample1.getRecordId());
-//    		fName1 = Database.getCatalog().getTableName(
-//    				sample1.getRecordId().getPageId().getTableId());
-//    	}
-//    	String fName2 = null;
-//    	if (sample2 != null) {
-//    		fName2 = Database.getCatalog().getTableName(
-//    				sample2.getRecordId().getPageId().getTableId());
-//    	}
-//    	
-//    	String[] rv = {fName1, fName2};
-    	return new String[2];
+    	String fN1 = i1.getTupleDesc().getFieldName(p.getField1());
+    	String fN2 = i2.getTupleDesc().getFieldName(p.getField2());
+    	String[] rv = {fN1, fN2};
+    	return rv;
     }
     
     
