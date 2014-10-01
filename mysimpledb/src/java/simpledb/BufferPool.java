@@ -2,7 +2,10 @@ package simpledb;
 
 import java.io.*;
 import java.util.ArrayList;
+<<<<<<< Updated upstream
 import java.util.Iterator;
+=======
+>>>>>>> Stashed changes
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -227,21 +230,10 @@ public class BufferPool {
     public void deleteTuple(TransactionId tid, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
     	// iterate over all the tableids
-    	Iterator<Integer> tidIter = Database.getCatalog().tableIdIterator();
-    	
     	ArrayList<Page> plist = null;
-    	while (tidIter.hasNext()) {
-    		int tableId = tidIter.next();
-    		DbFile f = Database.getCatalog().getDatabaseFile(tableId);
-    		
-    		// try deleting the tuple from the current table
-    		try {
-    			plist = f.deleteTuple(tid, t);
-    		} catch (DbException dbe) {
-    			dbe.printStackTrace();
-    			continue;
-    		}
-    	}
+    	int tableId = t.getRecordId().getPageId().getTableId();
+    	DbFile f = Database.getCatalog().getDatabaseFile(tableId);
+    	plist = f.deleteTuple(tid, t);
     	
     	// mark dirty bit
     	if (plist == null) {
@@ -249,6 +241,13 @@ public class BufferPool {
     	}
     	Page p = plist.get(0);
     	p.markDirty(true, tid);
+    	
+    	// update cached version(s)
+    	for (int i = 0; i < buffer.length; i++) {
+    		if (p.getId().equals((buffer[i]).getId())) { 
+    			buffer[i] = p;
+    		}
+    	}
     }
 
     
