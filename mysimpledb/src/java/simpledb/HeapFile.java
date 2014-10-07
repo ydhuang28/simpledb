@@ -107,6 +107,7 @@ public class HeapFile implements DbFile {
         int offset = page.getId().pageNumber() * BufferPool.getPageSize();
         raf.skipBytes(offset);
         raf.write(page.getPageData());
+        raf.close();
     } // end writePage(Page)
 
     
@@ -189,7 +190,7 @@ public class HeapFile implements DbFile {
      * @see DbFile#iterator(TransactionId)
      */
     public DbFileIterator iterator(TransactionId tid) {
-        return new HeapFileIterator(tid, this, td);
+        return new HeapFileIterator(tid);
     } // end iterator(TransactionId)
     
     
@@ -204,6 +205,7 @@ public class HeapFile implements DbFile {
     	/** Current page number in the file. */
     	private int currPgNo;
     	
+    	/** Iterator of current page. */
     	private Iterator<Tuple> currPgItr;
     	
     	/** Transaction id given by caller. */
@@ -218,9 +220,6 @@ public class HeapFile implements DbFile {
     	
     	/** The TupleDesc associated with tuples in this file. */
     	private TupleDesc td;
-    	
-    	/** This heap file. */
-    	private HeapFile hf;
     	
     	/** Read only or read/write for some given instance */
     	private Permissions permission;
@@ -237,15 +236,10 @@ public class HeapFile implements DbFile {
     	 * @param td	TupleDesc for the file to iterate over
     	 * @param p		permission of the iterator
     	 */
-    	private HeapFileIterator(TransactionId tid,
-    							 HeapFile hf,
-    							 TupleDesc td,
-    							 Permissions p) {
+    	private HeapFileIterator(TransactionId tid, Permissions p) {
     		currPgNo = 0;
     		opened = false;
-    		this.td = td;
     		this.tid = tid;
-    		this.hf = hf;
     		permission = p;
     	}
     	
@@ -258,8 +252,8 @@ public class HeapFile implements DbFile {
     	 * @param f		file to iterate over
     	 * @param td	TupleDesc for the file to iterate over
     	 */
-    	private HeapFileIterator(TransactionId tid, HeapFile hf, TupleDesc td) {
-    		this(tid, hf, td, Permissions.READ_ONLY);
+    	private HeapFileIterator(TransactionId tid) {
+    		this(tid, Permissions.READ_ONLY);
     	} // end HeapFileIterator(TransactionId, File, TupleDesc)
     	
     	
@@ -268,7 +262,7 @@ public class HeapFile implements DbFile {
     	 * and rewind() can be called.
     	 */
     	public void open() throws DbException, TransactionAbortedException {
-    		HeapPageId hpid = new HeapPageId(hf.getId(), currPgNo);
+    		HeapPageId hpid = new HeapPageId(getId(), currPgNo);
     		HeapPage hp = (HeapPage) Database.getBufferPool()
 				  	.getPage(tid, hpid, permission);
     		
@@ -285,12 +279,20 @@ public class HeapFile implements DbFile {
     	 */
     	public boolean hasNext() throws DbException, TransactionAbortedException {
     		if (!opened) return false;
+    		if (currPgItr.hasNext()) return true;
     		
-    		if (currPgNo == hf.numPages() - 1 && !currPgItr.hasNext()) {
-    			return false;
+    		currPgNo++;
+    		
+    		while (currPgNo < numPages()) {
+    			HeapPage p = (HeapPage) Database.getBufferPool().getPage(
+    					tid, new HeapPageId(getId(), currPgNo), permission);
+    			
+    			currPgItr = p.iterator();
+    			if (currPgItr.hasNext()) return true;
+    			else currPgNo++;
     		}
     		
-    		return true;
+    		return false;
     	} // end hasNext()
     	
     	
@@ -305,14 +307,7 @@ public class HeapFile implements DbFile {
     		
     		if (!hasNext()) throw new NoSuchElementException("no more tuples");
     		
-    		if (currPgItr.hasNext()) return currPgItr.next();
-    		else {
-    			currPgNo++;
-    			HeapPageId hpid = new HeapPageId(hf.getId(), currPgNo);
-        		currPgItr = ((HeapPage) Database.getBufferPool()
-        				  	.getPage(tid, hpid, Permissions.READ_ONLY)).iterator();
-        		return currPgItr.next();
-    		}
+    		return currPgItr.next();
     	} // end next()
     	
     	
@@ -321,24 +316,10 @@ public class HeapFile implements DbFile {
     	 * See general contract in DbIterator.java.
     	 */
     	public void rewind() throws DbException, TransactionAbortedException {
-    		if (!opened) throw new IllegalStateException("iterator not opened");
-    		
-    		currPgNo = 0;
-    		HeapPageId hpid = new HeapPageId(hf.getId(), currPgNo);
-    		currPgItr = ((HeapPage) Database.getBufferPool()
-    				  	.getPage(tid, hpid, Permissions.READ_ONLY)).iterator();
-    		
+    		close();
+    		open();    		
     	} // end rewind()
     	
-    	/**
-    	 * Returns the TupleDesc associated with the file being iterated over.
-    	 * See general contract in DbIterator.java.
-    	 * 
-    	 * @return the TupleDesc associated with the file
-    	 */
-    	public TupleDesc getTupleDesc() {
-    		return td;
-    	} // end getTupleDesc()
     	
     	/**
     	 * Closes the iterator. After this, hasNext(), next(), and rewind()
@@ -347,6 +328,8 @@ public class HeapFile implements DbFile {
     	 * See general contract in DbIterator.java.
     	 */
     	public void close() {
+    		currPgNo = 0;
+    		currPgItr = null;
     		opened = false;
     	} // end close()
     } // end HeapFileIterator

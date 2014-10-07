@@ -379,12 +379,34 @@ public class HeapPage implements Page {
      * (note that this iterator shouldn't return tuples in empty slots!)
      */
     public Iterator<Tuple> iterator() {
-        List<Tuple> tupleList = new ArrayList<Tuple>();
-        for (Tuple t : tuples) {
-        	if (t != null) tupleList.add(t);
-        }
-        return tupleList.iterator();
+        return new HeapPageIterator();
     } // end iterator()
+    
+    
+    private class HeapPageIterator implements Iterator<Tuple> {
+    	private int index;
+    	
+    	public HeapPageIterator() {
+    		index = 0;
+    	}
+    	
+    	public boolean hasNext() {
+    		for (int i = index; i < numSlots; i++) {
+    			if (isSlotUsed(i)) {
+    				index = i;
+    				return true;
+    			}
+    		}
+    		return false;
+    	}
+    	
+    	public Tuple next() {
+    		if (!hasNext()) throw new NoSuchElementException();
+    		
+    		Tuple rv = tuples[index++];
+    		return rv;
+    	}
+    }
 
 } // end HeapPage
 

@@ -2,10 +2,8 @@ package simpledb;
 
 import java.io.*;
 import java.util.ArrayList;
-<<<<<<< Updated upstream
-import java.util.Iterator;
-=======
->>>>>>> Stashed changes
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -40,13 +38,10 @@ public class BufferPool {
     public final int numPages;
     
     /** Buffer pool. */
-    private final Page[] buffer;
+    private Map<PageId, Page> buffer;
     
     /** Array for time when each page entered pool. */
-    private final long[] pageTime;
-    
-    /** Header to indicate which slots are used/not used. (bitmap) */
-    private final byte[] bufHeader;
+    private Map<PageId, Long> pageTime;
     
     
     /**
@@ -57,10 +52,9 @@ public class BufferPool {
     public BufferPool(int numPages) {
         if (numPages < 0) throw new RuntimeException("negative pages");
         
-        buffer = new Page[numPages];
-        pageTime = new long[numPages];
-        bufHeader = new byte[(int) (Math.ceil(numPages / 8.0))];
         this.numPages = numPages;
+        buffer = new HashMap<PageId, Page>();
+        pageTime = new HashMap<PageId, Long>();
     } // end BufferPool(int)
 
     
@@ -102,28 +96,31 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
         
-    	for (int i = 0; i < buffer.length; i++) {
-    		if (isSlotUsed(i)) {
-    			if (pid.equals(buffer[i].getId())) {
-    				return buffer[i];
-    			}
-    		}
+    	// find page in buffer if exists
+    	if (buffer.containsKey(pid)) {
+    		pageTime.put(pid, System.currentTimeMillis());
+    		return buffer.get(pid);
     	}
     	
+    	// DNE, put in buffer, evict if necessary
     	Catalog ctlg = Database.getCatalog();
     	DbFile dbfile = ctlg.getDatabaseFile(pid.getTableId());
     	
-    	int emptyI = findEmptySlot();
-    	while (emptyI < 0) {
+    	// evict if max capacity
+    	if (buffer.size() >= numPages) {
     		evictPage();
-    		emptyI = findEmptySlot();
     	}
     	
-    	buffer[emptyI] = dbfile.readPage(pid);
-    	pageTime[emptyI] = System.currentTimeMillis();
-    	markSlot(emptyI, true);
+    	assert buffer.size() < numPages;	// test size before
     	
-    	return buffer[emptyI];
+    	// read page, put in buffer
+    	Page rv = dbfile.readPage(pid);
+    	buffer.put(pid, rv);
+    	pageTime.put(pid, System.currentTimeMillis());
+    	
+    	assert buffer.size() <= numPages;	// test size after
+    	
+    	return rv;
     } // end getPage(TransactionId, PageId, Permissions)
 
     
@@ -138,7 +135,7 @@ public class BufferPool {
      */
     public void releasePage(TransactionId tid, PageId pid) {
         // some code goes here
-        // not necessary for lab1|lab2|lab3|lab4                                                         // cosc460
+        // not necessary for lab1|lab2|lab3|lab4
     } // end releasePage(TransactionId, PageId)
     
 
@@ -149,7 +146,7 @@ public class BufferPool {
      */
     public void transactionComplete(TransactionId tid) throws IOException {
         // some code goes here
-        // not necessary for lab1|lab2|lab3|lab4                                                         // cosc460
+        // not necessary for lab1|lab2|lab3|lab4
     } // end transactionComplete(TransactionId)
 
     
@@ -158,7 +155,7 @@ public class BufferPool {
      */
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
-        // not necessary for lab1|lab2|lab3|lab4                                                         // cosc460
+        // not necessary for lab1|lab2|lab3|lab4
         return false;
     } // end holdsLock(TransactionId, PageId)
 
@@ -173,15 +170,14 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid, boolean commit)
             throws IOException {
         // some code goes here
-        // not necessary for lab1|lab2|lab3|lab4                                                         // cosc460
+        // not necessary for lab1|lab2|lab3|lab4
     } // end transactionComplete(TransactionId, boolean)
 
     
     /**
      * Add a tuple to the specified table on behalf of transaction tid.  Will
      * acquire a write lock on the page the tuple is added to and any other
-     * pages that are updated (Lock acquisition is not needed until lab5).                                  // cosc460
-     * May block if the lock(s) cannot be acquired.
+     * pages that are updated (Lock acquisition is not needed until lab5).
      * <p/>
      * Marks any pages that were dirtied by the operation as dirty by calling
      * their markDirty bit, and updates cached versions of any pages that have
@@ -197,22 +193,14 @@ public class BufferPool {
 
         // insert tuple
         ArrayList<Page> modified = f.insertTuple(tid, t);
+        Page p = modified.get(0);
         
         // mark modified page dirty
-        modified.get(0).markDirty(true, tid);
-        Iterator<Tuple> iter = ((HeapPage) (modified.get(0))).iterator();
-        while (iter.hasNext()) System.out.println(iter.next());
+        p.markDirty(true, tid);
         
         // update cached version(s)
-        for (int i = 0; i < buffer.length; i++) {
-        	if (isSlotUsed(i)) {
-        		if (buffer[i].getId().equals(modified.get(0).getId())) {
-            		buffer[i] = modified.get(0);
-            		return;
-            	}
-        	}
-        }
-    }
+        buffer.put(p.getId(), p);
+    } // end insertTuple(TransactionId, int, Tuple)
 
     
     /**
@@ -243,12 +231,8 @@ public class BufferPool {
     	p.markDirty(true, tid);
     	
     	// update cached version(s)
-    	for (int i = 0; i < buffer.length; i++) {
-    		if (p.getId().equals((buffer[i]).getId())) { 
-    			buffer[i] = p;
-    		}
-    	}
-    }
+    	buffer.put(p.getId(), p);
+    } // end deleteTuple(TransactionId, Tuple)
 
     
     /**
@@ -257,12 +241,10 @@ public class BufferPool {
      * break simpledb if running in NO STEAL mode.
      */
     public synchronized void flushAllPages() throws IOException {
-    	for (int i = 0; i < buffer.length; i++) {
-        	if (isSlotUsed(i)) {
-        		flushPage(buffer[i].getId());
-        	}
+    	for (PageId pid : buffer.keySet()) {
+    		flushPage(pid);
         }
-    }
+    } // end flushAllPages()
 
     
     /**
@@ -273,8 +255,8 @@ public class BufferPool {
      */
     public synchronized void discardPage(PageId pid) {
         // some code goes here
-        // only necessary for lab6                                                                            // cosc460
-    }
+        // only necessary for lab6
+    } // end discardPage(PageId)
 
     
     /**
@@ -284,16 +266,12 @@ public class BufferPool {
      */
     private synchronized void flushPage(PageId pid) throws IOException {
     	// find page
-    	Page pToFlush = null;
-    	for (int i = 0; i < buffer.length; i++) {
-    		if (isSlotUsed(i)) {
-    			if (buffer[i].getId().equals(pid))
-        			pToFlush = buffer[i];
-    		}
-    	}
+    	Page pToFlush = buffer.get(pid);
+    	int tableId = pid.getTableId();
     	
     	// write page to disk
-        DbFile f = Database.getCatalog().getDatabaseFile(pid.getTableId());
+        Catalog c = Database.getCatalog();
+        DbFile f = c.getDatabaseFile(tableId);
         f.writePage(pToFlush);
         pToFlush.markDirty(false, new TransactionId());
     } // end flushPage(PageId)
@@ -313,64 +291,23 @@ public class BufferPool {
      * Flushes the page to disk to ensure dirty pages are updated on disk.
      */
     private synchronized void evictPage() throws DbException {
-        int earliestInd = 0;
-    	for (int i = 0; i < pageTime.length; i++) {			// find index of earliest
-        	if (pageTime[i] < pageTime[earliestInd])		// loaded page
-        		earliestInd = i;
-        }
+        long earliest = Long.MAX_VALUE;
+        PageId earliestPid = null;
+    	for (PageId pid : pageTime.keySet()) {
+    		long time = pageTime.get(pid);
+    		if (time < earliest) {
+    			earliestPid = pid;
+    			earliest = time;
+    		}
+    	}
     	
     	try {
-    		flushPage(buffer[earliestInd].getId());			// try flushing
+    		flushPage(earliestPid);							// try flushing
+    		pageTime.remove(earliestPid);
+    		buffer.remove(earliestPid);
     	} catch (IOException ioe) {
     		throw new DbException("could not evict page");	// throw exception if fail
     	}
-    	markSlot(earliestInd, false);						// mark page not used
     } // end evictPage()
-    
-    
-    /**
-     * Abstraction to find empty slot in BufferPool.
-     * 
-     * @return  the index of the empty slot (if any), or -1
-     * 			if no empty slots
-     */
-    private int findEmptySlot() {
-    	int emptyI = 0;
-    	for (; emptyI < numPages; emptyI++) {
-    		if (!isSlotUsed(emptyI)) return emptyI;
-    	}
-    	return -1;
-    }
-    
-    /**
-     * Abstraction for marking slot.
-     * 
-     * @param slotI
-     * @param isdirty
-     */
-    private void markSlot(int i, boolean isdirty) {
-    	// calculate bit position and header byte
-    	int bitPos = 1 << (i % Byte.SIZE);
-    	int bytePos = i / Byte.SIZE;
-    	
-    	// create mask depending on value
-    	byte mask = (byte) (isdirty ? bitPos : ~bitPos);
-    	
-    	// bitwise-OR or AND depending on value
-    	if (isdirty) {
-    		bufHeader[bytePos] = (byte) (bufHeader[bytePos] | mask);
-    	} else {
-    		bufHeader[bytePos] = (byte) (bufHeader[bytePos] & mask);
-    	}
-    }
-    
-    private boolean isSlotUsed(int i) {
-    	if (i < 0 || i >= numPages) return false;
-        
-        int bitPos = i % Byte.SIZE;
-    	byte mask = (byte) (1 << bitPos);
-        
-        return ((bufHeader[i / Byte.SIZE] & mask) >> bitPos) == 1;
-    }
 
 } // end BufferPool

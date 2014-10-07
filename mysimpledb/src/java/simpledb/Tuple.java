@@ -62,8 +62,6 @@ public class Tuple implements Serializable {
      * @param rid the new RecordId for this tuple.
      */
     public void setRecordId(RecordId rid) {
-    	if (rid == null) throw new NullPointerException("rid given is null");
-    	
         this.rid = rid;
     } // end setRecordId(RecordId)
 
