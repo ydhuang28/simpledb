@@ -5,16 +5,22 @@ package simpledb;
  */
 public class IntHistogram {
 	
+	/** max value in the histogram. */
 	private final int max;
 	
+	/** min value in the histogram. */
 	private final int min;
 	
+	/** width of each bucket, except for the last. */
 	private final int width;
 	
+	/** width of the last bucket. */
 	private final int lstWidth;
 	
+	/** count of each bucket. */
 	private final int[] buckets;
 	
+	/** sum of counts of all baskets. */
 	private int numTuples;
 
     /**
