@@ -332,6 +332,16 @@ public class HeapFile implements DbFile {
     		currPgItr = null;
     		opened = false;
     	} // end close()
+    	
+    	
+    	/**
+    	 * This iterator does not support remove operation.
+    	 * 
+    	 * @throws UnsupportedOperationException
+    	 */
+    	public void remove() throws UnsupportedOperationException {
+    		throw new UnsupportedOperationException("removed not supported");
+    	} // end remove()
     } // end HeapFileIterator
 } // end HeapFile
 

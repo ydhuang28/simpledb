@@ -406,6 +406,10 @@ public class HeapPage implements Page {
     		Tuple rv = tuples[index++];
     		return rv;
     	}
+    	
+    	public void remove() throws UnsupportedOperationException {
+    		throw new UnsupportedOperationException("removed not supported");
+    	}
     }
 
 } // end HeapPage
