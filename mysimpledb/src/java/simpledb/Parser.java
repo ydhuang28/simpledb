@@ -277,9 +277,14 @@ public class Parser {
     public Query handleQueryStatement(ZQuery s, TransactionId tId)
             throws TransactionAbortedException, DbException, IOException,
             simpledb.ParsingException, Zql.ParseException {
+    	// create new query using provided tid
         Query query = new Query(tId);
 
+        // create logical plan according to given ZQuery
         LogicalPlan lp = parseQueryLogicalPlan(tId, s);
+        
+        // calls lp.physicalPlan() to (try to) find an optimal plan,
+        // which is what lp.physicalPlan() does
         DbIterator physicalPlan = lp.physicalPlan(tId,
                 TableStats.getStatsMap(), explain);
         query.setPhysicalPlan(physicalPlan);
@@ -329,7 +334,8 @@ public class Parser {
             simpledb.ParsingException, Zql.ParseException {
         int tableId;
         try {
-            tableId = Database.getCatalog().getTableId(s.getTable()); // will
+            tableId = Database.getCatalog().getTableId(s.getTable());
+            // will
             // fall
             // through if
             // table

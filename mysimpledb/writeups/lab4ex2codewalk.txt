@@ -20,11 +20,19 @@ Walk thru 2: simpledb.Parser.processNextStatement()
 
 Walk thru 3: simpledb.Parser.handleQueryStatement()
 
-	<fill this in>	
+	This method takes the user input query in the form of a ZQuery and a TransactionId,
+	and returns a Query that has the corresponding logical and physical plan. Specifically,
+	it does:
+		- Creates a new Query object
+		- Converts the Query object into a LogicalPlan
+		- calls lp.physicalPlan() to find the optimal PhysicalPlan
+		- sets the Query object's LogicalPlan and PhysicalPlan to the ones just found
+		- prints a visualization if possible
+		- returns the Query object
 
 Walk thru 4: simpledb.Parser.parseQueryLogicalPlan()
 
-	<fill this in>
+	
 
 	Note: this method is rather long and complex.  Your walk thru should focus
 	on the high-level ideas.  Specifically, explain how SQL query is processed to construct the LogicalPlan.  
