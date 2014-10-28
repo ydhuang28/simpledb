@@ -309,14 +309,19 @@ public class LogicalPlan {
      * @return A DbIterator representing this plan.
      * @throws ParsingException if the logical plan is not valid
      */
-    public DbIterator physicalPlan(TransactionId t, Map<String, TableStats> baseTableStats, boolean explain) throws ParsingException {
+    public DbIterator physicalPlan(TransactionId t, Map<String, TableStats> baseTableStats,
+    		boolean explain) throws ParsingException {
         Iterator<LogicalScanNode> tableIt = tables.iterator();
         HashMap<String, String> equivMap = new HashMap<String, String>();
         HashMap<String, Double> filterSelectivities = new HashMap<String, Double>();
         HashMap<String, TableStats> statsMap = new HashMap<String, TableStats>();
 
+        // while there are more relations to process
         while (tableIt.hasNext()) {
+        	// get the raw table to process
             LogicalScanNode table = tableIt.next();
+            
+            // try to create a SeqScan on the raw table
             SeqScan ss = null;
             try {
                 ss = new SeqScan(t, Database.getCatalog().getDatabaseFile(table.t).getId(), table.alias);
@@ -324,6 +329,8 @@ public class LogicalPlan {
                 throw new ParsingException("Unknown table " + table.t);
             }
 
+            // put the raw table's name and the corresponding plan
+            // into subplanMap
             subplanMap.put(table.alias, ss);
             String baseTableName = Database.getCatalog().getTableName(table.t);
             statsMap.put(baseTableName, baseTableStats.get(baseTableName));
@@ -331,6 +338,8 @@ public class LogicalPlan {
 
         }
 
+        // get all Filter nodes
+        // process all Filter nodes, because we push selections down
         Iterator<LogicalFilterNode> filterIt = filters.iterator();
         while (filterIt.hasNext()) {
             LogicalFilterNode lf = filterIt.next();

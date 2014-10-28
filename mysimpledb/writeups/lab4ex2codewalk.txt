@@ -32,7 +32,19 @@ Walk thru 3: simpledb.Parser.handleQueryStatement()
 
 Walk thru 4: simpledb.Parser.parseQueryLogicalPlan()
 
-	
+	First, it takes the FROM clause from the query and figures out whether each table
+	exists and, if it does, adds it to the logical plan for scanning. This is necessary
+	for every table because LogicalPlan requires all base relations (even if they are
+	processed later) be in its tableMap.
+
+	Next, it takes the WHERE clause and creates Join and Filter nodes as needed. This is
+	done using the processExpression() method, and all substatements (GROUP BY, A op B, etc.)
+	are all added to the LogicalPlan passed in.
+
+	Then it takes the SELECT clause and takes each projection or aggregation and adds that
+	to the LogicalPlan.
+
+	Lastly, it make sures that the data is sorted if the query asks that the data be sorted.
 
 	Note: this method is rather long and complex.  Your walk thru should focus
 	on the high-level ideas.  Specifically, explain how SQL query is processed to construct the LogicalPlan.  
@@ -45,27 +57,58 @@ Walk thru 5: simpledb.LogicalPlan.physicalPlan()
 		- statsMap
 		- subplanMap
 
-	<fill this in>
+	First, it creates (tries to create) SeqScans for all base relations needed to process, and
+	put (tableName, corr. SeqScan) pairs into subplanMap, which is a map on tables and how to
+	execute the subplan on the tables. It also puts the corresponding stats for the table into
+	statsMap and puts 1.0 (since no filter yet) for the selectivity on the table into
+	filterSelectivities.
+
+	Then it gets all the Filter nodes (because we push selection down), creates a new Filter for
+	each and puts the Filter with the corresponding table into subplanMap, replacing the base
+	relation. It also gets the stats again and puts it with the table into statsMap, and computes
+	the selectivity for each Filter and puts the selectivity with the table into filterSelectivities.
+
+	Next, it optimizes join order using JoinOptimizer.orderJoins(). orderJoins() takes in the
+	stats for each (maybe filtered) table in the form of statsMap, all the selectivities of each
+	(maybe filtered) table in the form of filterSelectivities, and computes the best join order
+	using the statistics and the selectivities.
+
+	Next, it reads all the joins and puts the join iterator with the 1st table in the join into
+	subplanMap. It then removes the 2nd table, if it is not a subquery (subPlan) and replaces it with
+	the 1st table in the join. The equivMap keeps track of which tables are equivalent to each other,
+	i.e., they have been joined.
+
+	The last 3 things that it does is to do all the projections in the SELECT clause, and then
+	aggregations (if any), and then GROUP BYs (if any).
+
+	Lastly, it returns the root node (in the form of a DbIterator) of the physical plan tree.
 
 Walk thru 6: simpledb.JoinOptimizer.orderJoins()
 
-	<fill this in>
+	orderJoins() takes the statistics and selectivity of each table that needs to be joined,
+	and returns a order of joins that is optimal. It will also print out a visualization of
+	the join if (explain == true).
 
 Walk thru 7: JoinOptimizer.computeCostAndCardOfSubplan()
 
-	<fill this in>
+	It computes the cost and the cardinality (size) of some join plan. Specifically, it
+	implements the part of the dynamic programming algorithm where the cost of join(S) = 
+	min_{all R in S}(cost((S-{R}).join(R))).
 
 Walk thru 8: JoinOptimizer.estimateJoinCost()
 
-	<fill this in>
+	This estimates the cost of joining 2 tables. Since we implemented our joins using nested
+	loops, the cost should simply be the formula provided in the lab4 instructions.
 
 Walk thru 9: JoinOptimizer.estimateJoinCardinality()
 
-	<fill this in>
+	This estimates the size of the result of joining 2 tables. Again, this can be calculated
+	using the formula given.
 
 Walk thru 10 query.execute()
 	
 	Note: This is called inside simpledb.Parser.processNextStatement().  Refer back to Walk thru 2.
 
-	<fill this in>
+	This simply outputs the result of the query. It uses the physical plan in the form of
+	a DbIterator.
 

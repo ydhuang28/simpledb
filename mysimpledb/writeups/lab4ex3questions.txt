@@ -1,25 +1,72 @@
 Questions
 ---------
 
-Answer these questions.  With each question is a hint as to which part of the code walk you might consult to find the answer.
+Answer these questions.  With each question is a hint as to which part of the code walk you might
+consult to find the answer.
 
 (Walk thru 1) How many instances of the TableStats class are created?
 
-(Walk thru 4) In class, we said a logical plan is a relational algebra tree.  That's not how it's represented in SimpleDB.  How is it represented? 
+	Each table gets its own TableStats, so if N is the number of tables in the database, then N
+	TableStats instances are created.
 
-(Walk thru 5) The physicalPlan is a relational algebra tree.  Describe the basic shape of this tree in terms of which ops go where.
+(Walk thru 4) In class, we said a logical plan is a relational algebra tree.  That's not how it's
+represented in SimpleDB.  How is it represented? 
 
-(Walk thru 5) Suppose a query applies multiple filters to a single table.  For example, the query described in the lab write up filters on both actor first and last name.  In such cases, how is the selectivity estimated?  
+	It is represented using collections (vectors) of joins, filters, and aggregation and GROUP BYs
+	if needed. When the physical plan is needed, LogicalPlan.physicalPlan() is called to return
+	the best physical plan according to our heuristics and JoinOptimizer, which returns the best
+	join order for all the joins.
 
-(Walk thru 5) Explain the meaning of this if statement.  Why should the subplanMap have size 0 or 1 at this point?
+(Walk thru 5) The physicalPlan is a relational algebra tree.  Describe the basic shape of this tree in
+terms of which ops go where.
+
+	From top to down, GROUP BYs, aggregations come first in that order if they exist, and then all
+	the projections. And then all the joins happen on any filtered lists, and any selection (filtration)
+	happens first (right after SeqScans of each table). Visually, it looks like:
+
+											GROUP BYs		(if any)
+												|
+										   aggregations 	(if any)
+										   		|
+										   	projections
+										   		|
+										   	  joins
+										   	  	|
+										   	selections
+										   		|
+										   	base SeqScans
+
+(Walk thru 5) Suppose a query applies multiple filters to a single table.  For example, the query
+described in the lab write up filters on both actor first and last name.  In such cases, how is the
+selectivity estimated?  
+
+	The filter is simply applied twice, and the selectivity is estimated by calling
+	estimateSelectivity() on the intermediate result (after 1st select).
+
+(Walk thru 5) Explain the meaning of this if statement.  Why should the subplanMap have size 0 or 1 at
+this point?
 
     if (subplanMap.size() > 1) {
         throw new ParsingException("Query does not include join expressions joining all nodes!");
     }
 
-(Walk thru 7) What does computeCostAndCardOfSubplan do when the joinSet contains only a single join, the joinToRemove?
+    After all the joins are processed, all the joined relations should have been removed by the
+    previous code. Therefore subplanMap should be no bigger than 1.
 
-(Walk thru 9) Suppose we are considering a join between a table A and the result of a join between B and C.  Assume table A is the outer relation in the join.  What is the cost estimate?  Your expression should be in terms of the sizes (# pages, # tuples) of the base relations A, B, C.
+(Walk thru 7) What does computeCostAndCardOfSubplan do when the joinSet contains only a single join,
+the joinToRemove?
 
-(Walk thru 10) In lab 3, you write Join and Filter operators.  Both of these support the DbIterator interface.  When/where are these iterators called?
+	It creates the cache and estimates the scan cost and the cardinality for both base relations.
 
+(Walk thru 9) Suppose we are considering a join between a table A and the result of a join between B
+and C.  Assume table A is the outer relation in the join.  What is the cost estimate?  Your expression
+should be in terms of the sizes (# pages, # tuples) of the base relations A, B, C.
+
+	
+
+(Walk thru 10) In lab 3, you write Join and Filter operators.  Both of these support the DbIterator
+interface.  When/where are these iterators called?
+
+	These iterators are called when query.execute() calls this.next(). This will then call the root
+	node of the physical plan (DbIterator), and it will fetch results by calling child iterators
+	recursively.
