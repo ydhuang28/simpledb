@@ -17,12 +17,18 @@ public class TableStats {
 
     public static TableStats getTableStats(String tablename) {
         return statsMap.get(tablename);
-    }
+    } // end getTableStats(String)
 
     public static void setTableStats(String tablename, TableStats stats) {
         statsMap.put(tablename, stats);
-    }
+    } // end setTableStats(String, TableStats)
 
+    
+    /**
+     * Sets the stats map.
+     * 
+     * @param s the stats map to set to
+     */
     public static void setStatsMap(HashMap<String, TableStats> s) {
         try {
             java.lang.reflect.Field statsMapF = TableStats.class.getDeclaredField("statsMap");
@@ -38,12 +44,17 @@ public class TableStats {
             e.printStackTrace();
         }
 
-    }
+    } // end setStatsMap(HashMap<String, TableStats>)
 
+    
+    /**
+     * @return the stats map associated
+     */
     public static Map<String, TableStats> getStatsMap() {
         return statsMap;
-    }
+    } // end getStatsMap()
 
+    
     public static void computeStatistics() {
         Iterator<Integer> tableIt = Database.getCatalog().tableIdIterator();
 
@@ -54,8 +65,9 @@ public class TableStats {
             setTableStats(Database.getCatalog().getTableName(tableid), s);
         }
         System.out.println("Done.");
-    }
+    } // end computeStatistics()
 
+    
     /**
      * Number of bins for the histogram. Feel free to increase this value over
      * 100, though our tests assume that you have at least 100 bins in your
@@ -63,6 +75,7 @@ public class TableStats {
      */
     static final int NUM_HIST_BINS = 100;
 
+    
     /**
      * Create a new TableStats object, that keeps track of statistics on each
      * column of a table
@@ -80,8 +93,9 @@ public class TableStats {
         // necessarily have to (for example) do everything
         // in a single scan of the table.
         // some code goes here
-    }
+    } // end TableStats(int, int)
 
+    
     /**
      * Estimates the cost of sequentially scanning the file, given that the cost
      * to read a page is costPerPageIO. You can assume that there are no seeks
@@ -97,7 +111,7 @@ public class TableStats {
     public double estimateScanCost() {
         // some code goes here
         return 0;
-    }
+    } // end estimateScanCost()
 
     /**
      * This method returns the number of tuples in the relation, given that a
@@ -110,8 +124,9 @@ public class TableStats {
     public int estimateTableCardinality(double selectivityFactor) {
         // some code goes here
         return 0;
-    }
+    } // end estimateTableCardinality(double)
 
+    
     /**
      * This method returns the number of distinct values for a given field.
      * If the field is a primary key of the table, then the number of distinct
@@ -128,8 +143,9 @@ public class TableStats {
         // some code goes here
         throw new UnsupportedOperationException("implement me");
 
-    }
+    } // end numDistinctValues(int)
 
+    
     /**
      * Estimate the selectivity of predicate <tt>field op constant</tt> on the
      * table.
@@ -143,6 +159,6 @@ public class TableStats {
     public double estimateSelectivity(int field, Predicate.Op op, Field constant) {
         // some code goes here
         return 1.0;
-    }
+    } // end estimateSelectivity(int, Predicate.Op, Field)
 
-}
+} // end TableStats

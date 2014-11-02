@@ -6,8 +6,8 @@ consult to find the answer.
 
 (Walk thru 1) How many instances of the TableStats class are created?
 
-	Each table gets its own TableStats, so if N is the number of tables in the database, then N
-	TableStats instances are created.
+	Each table gets its own TableStats, so if N is the number of tables in the database, then N+1
+	TableStats instances are created (the extra is for the overall TableStats instance).
 
 (Walk thru 4) In class, we said a logical plan is a relational algebra tree.  That's not how it's
 represented in SimpleDB.  How is it represented? 
@@ -62,7 +62,7 @@ the joinToRemove?
 and C.  Assume table A is the outer relation in the join.  What is the cost estimate?  Your expression
 should be in terms of the sizes (# pages, # tuples) of the base relations A, B, C.
 
-	
+
 
 (Walk thru 10) In lab 3, you write Join and Filter operators.  Both of these support the DbIterator
 interface.  When/where are these iterators called?
