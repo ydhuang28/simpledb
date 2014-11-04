@@ -105,16 +105,17 @@ public class TableStats {
     	distinctValues = new int[numFields];
     	histograms = createHistograms(td, iter);
     	
+    	HashMap<String, HashSet<Field>> distinctFields
+			= new HashMap<String, HashSet<Field>>();
+    	for (int i = 0; i < numFields; i++) {
+    		distinctFields.put(td.getFieldName(i), new HashSet<Field>());
+    	}
     	try {
     		iter.open();
     		iter.rewind();
     		
     		// store distinct values for each field
-    		ArrayList<HashSet<Field>> distinctFields
-    			= new ArrayList<HashSet<Field>>();
-    		for (int i = 0; i < numFields; i++) {
-    			distinctFields.add(new HashSet<Field>());
-    		}
+    		
 			while (iter.hasNext()) {
 				// count number of tuples (cardinality)
 				Tuple curr = iter.next();
@@ -123,20 +124,18 @@ public class TableStats {
 				// count distinct values for each field;
 				// add tuples into histogram
 				for (int i = 0; i < numFields; i++) {
-					HashSet<Field> dfs = distinctFields.get(i);
+					HashSet<Field> dfs = distinctFields.get(td.getFieldName(i));
 					Field currF = curr.getField(i);
 					
 					// count distinct values
-					if (!dfs.contains(currF)) {
-						dfs.add(currF);
-						distinctValues[i]++;
-					}
+					dfs.add(currF);
 					
 					// check int or string field, and
 					// add value accordingly
 					if (td.getFieldType(i).equals(Type.INT_TYPE)) {
+						int v = ((IntField) curr.getField(i)).getValue();
 						IntHistogram hist = (IntHistogram) histograms[i];
-						hist.addValue(((IntField) curr.getField(i)).getValue());
+						hist.addValue(v);
 					} else {
 						StringHistogram hist = (StringHistogram) histograms[i];
 						hist.addValue(((StringField) curr.getField(i)).getValue());
@@ -144,9 +143,11 @@ public class TableStats {
 				}
 			}
 			iter.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		} catch (Exception e) {}
+    	for (int i = 0; i < numFields; i++) {
+    		distinctValues[i] = distinctFields.get(td.getFieldName(i)).size();
+    	}
+    	
     } // end TableStats(int, int)
     
     
@@ -178,15 +179,15 @@ public class TableStats {
     		iter.open();
 			while (iter.hasNext()) {
 				Tuple t = iter.next();
-				
 				for (int i = 0; i < numFields; i++) {
 					Field f = t.getField(i);
 					Type ft = td.getFieldType(i);
 		    		if (ft.equals(Type.INT_TYPE)) {
-		    			if (f.compare(Predicate.Op.GREATER_THAN_OR_EQ, new IntField(maxs[i]))) {
-		    				maxs[i] = ((IntField) f).getValue();
-		    			} else if (f.compare(Predicate.Op.LESS_THAN_OR_EQ, new IntField(mins[i]))) {
-		    				mins[i] = ((IntField) f).getValue();
+		    			int v = ((IntField) f).getValue();
+		    			if (v > maxs[i]) {
+		    				maxs[i] = v;
+		    			} else if (v < mins[i]) {
+		    				mins[i] = v;
 		    			}
 		    		}
 		    	}
@@ -252,6 +253,7 @@ public class TableStats {
      * @return The number of distinct values of the field.
      */
     public int numDistinctValues(int field) {
+    	System.out.println(distinctValues[field]);
         return distinctValues[field];
     } // end numDistinctValues(int)
 

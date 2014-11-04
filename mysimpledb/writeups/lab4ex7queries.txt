@@ -10,20 +10,32 @@ and a.fname='Ginger' and a.lname='Rogers';
 
 Query 1 optimizer's plan:
 
-<fill in here>
+						   π(d.fname,d.lname),card:1
+                           |
+                           ⨝(a.id=c.pid),card:1
+  _________________________|__________________________
+  |                                                  |
+  σ(a.lname=Rogers),card:1                           ⨝(m.did=d.id),card:1
+  |                                  ________________|________________
+  σ(a.fname=Ginger),card:1           |                               |
+  |                                  ⨝(c.mid=m.mid),card:1           |
+  |                           _______|________                       |
+  |                           |              |                     scan(Director d)
+scan(Actor a)               scan(Casts c)  scan(Movie_Director m)
 
 Query 1 plan explanation:
 
-<fill in here>
+Because the selection filters on Actor filtered out everything so that
+it only had 1 tuple. Other choices are also similar.
 
 Query 2:
 
 <fill in here>
 
-Query 1 optimizer's plan:
+Query 2 optimizer's plan:
 
 <fill in here>
 
-Query 1 plan explanation:
+Query 2 plan explanation:
 
 <fill in here>

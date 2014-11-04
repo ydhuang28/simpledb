@@ -176,6 +176,7 @@ public class JoinOptimizer {
         	int numDistinct2 = stats.get(t2Name).numDistinctValues(fld2Ind);
         	card = (card1 * card2) / Math.max(numDistinct1, numDistinct2);
         	
+        	
         	// adjust if primary key and too large
         	if (t1pkey && card > card2) {
         		card = card2;
