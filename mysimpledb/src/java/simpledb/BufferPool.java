@@ -193,13 +193,10 @@ public class BufferPool {
 
         // insert tuple
         ArrayList<Page> modified = f.insertTuple(tid, t);
-        Page p = modified.get(0);
-        
-        // mark modified page dirty
-        p.markDirty(true, tid);
-        
-        // update cached version(s)
-        buffer.put(p.getId(), p);
+        for (Page p : modified) {
+        	p.markDirty(true, tid);		// mark modified page dirty
+        	buffer.put(p.getId(), p);	// update cached version(s)
+        }
     } // end insertTuple(TransactionId, int, Tuple)
 
     
@@ -267,13 +264,15 @@ public class BufferPool {
     private synchronized void flushPage(PageId pid) throws IOException {
     	// find page
     	Page pToFlush = buffer.get(pid);
-    	int tableId = pid.getTableId();
-    	
-    	// write page to disk
-        Catalog c = Database.getCatalog();
-        DbFile f = c.getDatabaseFile(tableId);
-        f.writePage(pToFlush);
-        pToFlush.markDirty(false, new TransactionId());
+    	if (pToFlush.isDirty() != null) {
+    		int tableId = pid.getTableId();
+        	
+        	// write page to disk
+            Catalog c = Database.getCatalog();
+            DbFile f = c.getDatabaseFile(tableId);
+            f.writePage(pToFlush);
+            pToFlush.markDirty(false, null);
+    	}
     } // end flushPage(PageId)
 
     

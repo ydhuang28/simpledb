@@ -11,9 +11,17 @@ import javax.swing.tree.*;
  * logical plan.
  */
 public class JoinOptimizer {
+	
+	/** logical plan associated with this join. */
     LogicalPlan p;
+    
+    /** list of joins. */
     Vector<LogicalJoinNode> joins;
+    
+    /** used to estimate inequality joins. */
+    static final double INEQ_FRAC = 0.3;
 
+    
     /**
      * Constructor
      *
@@ -23,7 +31,8 @@ public class JoinOptimizer {
     public JoinOptimizer(LogicalPlan p, Vector<LogicalJoinNode> joins) {
         this.p = p;
         this.joins = joins;
-    }
+    } // end JoinOptimizer(LogicalPlan, Vector<LogicalJoinNode>)
+    
 
     /**
      * Return best iterator for computing a given logical join, given the
@@ -81,7 +90,8 @@ public class JoinOptimizer {
 
         return j;
 
-    }
+    } // end instantiateJoin(LogicalJoinNode, DbIterator, DbIterator)
+    
 
     /**
      * Estimate the cost of a join.
@@ -110,13 +120,10 @@ public class JoinOptimizer {
             // You do not need to implement proper support for these for Lab 4.
             return card1 + cost1 + cost2;
         } else {
-            // Insert your code here.
-            // HINT: You may need to use the variable "j" if you implemented
-            // a join algorithm that's more complicated than a basic
-            // nested-loops join.
-            return -1.0;
+            return cost1 + card1 * cost2;
         }
-    }
+    } // end estimateJoinCost(LogicalJoinNode, int, int, double, double)
+    
 
     /**
      * Estimate the cardinality of a join. The cardinality of a join is the
@@ -142,7 +149,8 @@ public class JoinOptimizer {
                     j.f1PureName, j.f2PureName, card1, card2, t1pkey, t2pkey,
                     stats, p.getTableAliasToIdMapping());
         }
-    }
+    } // end estimateJoinCardinality(LogicalJoinNode, int, int, boolean, boolean, Map<String, TableStats>)
+    
 
     /**
      * Estimate the join cardinality of two tables.
@@ -153,9 +161,36 @@ public class JoinOptimizer {
                                                    boolean t2pkey, Map<String, TableStats> stats,
                                                    Map<String, Integer> tableAliasToId) {
         int card = 1;
-        // some code goes here
+        int tableid1 = tableAliasToId.get(table1Alias);
+        int tableid2 = tableAliasToId.get(table2Alias);
+        DbFile f1 = Database.getCatalog().getDatabaseFile(tableid1);
+        DbFile f2 = Database.getCatalog().getDatabaseFile(tableid2);
+        String t1Name = Database.getCatalog().getTableName(tableid1);
+        String t2Name = Database.getCatalog().getTableName(tableid2);
+        
+        int fld1Ind = f1.getTupleDesc().fieldNameToIndex(field1PureName);
+        int fld2Ind = f2.getTupleDesc().fieldNameToIndex(field2PureName);
+        
+        if (joinOp.equals(Predicate.Op.EQUALS)) {
+        	int numDistinct1 = stats.get(t1Name).numDistinctValues(fld1Ind);
+        	int numDistinct2 = stats.get(t2Name).numDistinctValues(fld2Ind);
+        	card = (card1 * card2) / Math.max(numDistinct1, numDistinct2);
+        	
+        	// adjust if primary key and too large
+        	if (t1pkey && card > card2) {
+        		card = card2;
+        	} else if (t2pkey && card > card1) {
+        		card = card1;
+        	}
+        } else { // inequality
+        	card = (int) ((card1 * card2) * INEQ_FRAC);
+        }
+        
         return card <= 0 ? 1 : card;
-    }
+    } // end estimateTableJoinCardinality(Predicate.Op, String, String, String,
+      // 								  String, int, int, boolean, boolean,
+      //								  Map<String, TableStats>, Map<String, Integer>)
+    
 
     /**
      * Helper method to enumerate all of the subsets of a given size of a
@@ -186,7 +221,8 @@ public class JoinOptimizer {
 
         return els;
 
-    }
+    } // end enumerateSubsets(Vector<T>, int)
+    
 
     /**
      * Compute a logical, reasonably efficient join on the specified tables. See
@@ -208,15 +244,48 @@ public class JoinOptimizer {
             HashMap<String, TableStats> stats,
             HashMap<String, Double> filterSelectivities, boolean explain)
             throws ParsingException {
+    	
+    	// set up cache
+    	PlanCache bestPlans = new PlanCache();
+    	
+    	// save the overall set for later retrieval
+    	Set<LogicalJoinNode> overallSet = null;
+    	
+    	// iterate over all subsets
+    	for (int i = 1; i <= joins.size(); i++) {
+    		Set<Set<LogicalJoinNode>> iSubset = enumerateSubsets(joins, i);
+    		for (Set<LogicalJoinNode> s : iSubset) {
+    			if (i == joins.size()) overallSet = s;
+    				
+    			CostCard currBest = null;
+    			for (LogicalJoinNode j : s) {
+    				CostCard result = null;
+    				if (currBest == null) {
+    					result = computeCostAndCardOfSubplan(stats, 
+    							filterSelectivities, j, s, Double.MAX_VALUE,
+        						bestPlans);
+    				} else {
+    					result = computeCostAndCardOfSubplan(stats, 
+    							filterSelectivities, j, s, currBest.cost,
+        						bestPlans);
+    				}
+    				currBest = result != null ? result : currBest;
+    			}
+    			if (currBest == null) { // cross product
+    				bestPlans.addPlan(s, Double.MAX_VALUE, Integer.MAX_VALUE, null);
+    			} else {
+    				bestPlans.addPlan(s, currBest.cost, currBest.card, currBest.plan);
+    			}
+    			
+    		}
+    	}
+    	
+    	Vector<LogicalJoinNode> rv = bestPlans.getOrder(overallSet);
+    	if (explain) printJoins(rv, bestPlans, stats, filterSelectivities);
+        return rv;
+    } // end orderJoins(HashMap<String, TableStats>, HashMap<String, Double>, boolean)
 
-        // See the Lab 4 writeup for some hints as to how this function
-        // should work.
-
-        // some code goes here
-        //Replace the following
-        return joins;
-    }
-
+    
     // ===================== Private Methods =================================
 
     /**

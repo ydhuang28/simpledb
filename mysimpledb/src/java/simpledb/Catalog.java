@@ -50,6 +50,20 @@ public class Catalog {
         if (name == null || file == null)
         	throw new NullPointerException("null parameter(s)");
         
+        // remember to remove previous entries for same file!!
+        if (tableMap.containsValue(file)) {
+        	ArrayList<String> toRemove = new ArrayList<String>();
+        	for (Map.Entry<String, DbFile> e : tableMap.entrySet()) {
+        		if (e.getValue().equals(file)) {
+        			toRemove.add(e.getKey());
+        		}
+        	}
+        	for (String s : toRemove) {
+        		tableMap.remove(s);
+        	}
+        }
+        
+        // put new entry
         tableMap.put(name, file);
         
         // set pkeyField if any
