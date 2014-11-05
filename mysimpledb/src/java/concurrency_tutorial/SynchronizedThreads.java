@@ -45,10 +45,11 @@ public class SynchronizedThreads {
 
         public void run() {
             // increment the counter numIncrements times
-            for (int i = 0; i < numIncrements; i++) {
-                counter.increment(name);
+        	for (int i = 0; i < numIncrements; i++) {
+        		counter.increment(name);
             }
         }
+       
     }
 
     static class Counter {
@@ -58,7 +59,7 @@ public class SynchronizedThreads {
          * Increase the counter by one.
          * @param name the name of the incrementer (i.e., whoever called this method)
          */
-        public void increment(String name) {
+        public synchronized void increment(String name) {
             int currCount = count;  // read
             // introduce a delay between read and write to "encourage" race conditions
             System.out.println("Shared counter incremented by " + name + ".");
