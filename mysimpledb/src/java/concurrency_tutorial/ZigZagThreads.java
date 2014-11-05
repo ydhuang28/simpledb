@@ -45,16 +45,30 @@ public class ZigZagThreads {
         private boolean needZig = true;
 
         private synchronized boolean isLockFree(boolean isZigger) {
-            // some code goes here
-            return true;
+        	if (!inUse) {
+        		if (isZigger && needZig) {
+        			return true;
+        		} else if (!isZigger && !needZig) {
+        			return true;
+        		}
+        	}
+            return false;
         }
 
-        public void acquireLock(boolean isZigger) {
-            // some code goes here
+        public synchronized void acquireLock(boolean isZigger) {
+            while (!isLockFree(isZigger)) {
+            	try {
+            		wait();
+            	} catch (InterruptedException e) {}
+            }
+            inUse = true;
+            needZig = isZigger? false : true;
         }
 
         public synchronized void releaseLock() {
-            // some code goes here
+            inUse = false;
+            notifyAll();
         }
-    }}
+    }
+}
 
