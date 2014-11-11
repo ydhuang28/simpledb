@@ -4,7 +4,6 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -43,6 +42,9 @@ public class BufferPool {
     /** Array for time when each page entered pool. */
     private Map<PageId, Long> pageTime;
     
+    /** Lock manager for concurrency. */
+    private LockManager lm;
+    
     
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -55,6 +57,7 @@ public class BufferPool {
         this.numPages = numPages;
         buffer = new HashMap<PageId, Page>();
         pageTime = new HashMap<PageId, Long>();
+        lm = new LockManager();
     } // end BufferPool(int)
 
     
@@ -95,6 +98,8 @@ public class BufferPool {
      */
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
+    	
+    	lm.acquireLock(pid, tid, true);
         
     	// find page in buffer if exists
     	if (buffer.containsKey(pid)) {
@@ -134,8 +139,7 @@ public class BufferPool {
      * @param pid the ID of the page to unlock
      */
     public void releasePage(TransactionId tid, PageId pid) {
-        // some code goes here
-        // not necessary for lab1|lab2|lab3|lab4
+        lm.releaseLock(pid, tid);
     } // end releasePage(TransactionId, PageId)
     
 
@@ -154,9 +158,7 @@ public class BufferPool {
      * Return true if the specified transaction has a lock on the specified page
      */
     public boolean holdsLock(TransactionId tid, PageId p) {
-        // some code goes here
-        // not necessary for lab1|lab2|lab3|lab4
-        return false;
+        return lm.holdsLock(tid, p);
     } // end holdsLock(TransactionId, PageId)
 
     

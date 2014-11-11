@@ -272,7 +272,10 @@ public class TestUtil {
      * Mock SeqScan class for unit testing.
      */
     public static class MockScan implements DbIterator {
-        private int cur, low, high, width;
+
+		private static final long serialVersionUID = 1L;
+		
+		private int cur, low, high, width;
 
         /**
          * Creates a fake SeqScan that returns tuples sequentially with 'width'

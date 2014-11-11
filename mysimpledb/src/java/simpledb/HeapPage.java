@@ -21,7 +21,6 @@ public class HeapPage implements Page {
     byte[] oldData;
     private final Byte oldDataLock = new Byte((byte) 0);
     
-    private boolean dirty;
     private TransactionId lastTrnsctnToDirty;
 
     
@@ -46,7 +45,6 @@ public class HeapPage implements Page {
         this.pid = id;
         this.td = Database.getCatalog().getTupleDesc(id.getTableId());
         this.numSlots = getNumTuples();
-        this.dirty = false;
         this.lastTrnsctnToDirty = null;
         
         DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data));
@@ -305,7 +303,6 @@ public class HeapPage implements Page {
      * that did the dirtying
      */
     public void markDirty(boolean dirty, TransactionId tid) {
-        this.dirty = dirty;
         lastTrnsctnToDirty = dirty ? tid : null;
     } // end markDirty(boolean, TransactionId)
 

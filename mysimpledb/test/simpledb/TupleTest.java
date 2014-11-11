@@ -2,12 +2,8 @@ package simpledb;
 
 import junit.framework.Assert;
 import junit.framework.JUnit4TestAdapter;
-
 import org.junit.Test;
-
 import simpledb.systemtest.SimpleDbTestBase;
-
-import java.util.Iterator;
 
 import static org.junit.Assert.*;
 

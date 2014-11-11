@@ -218,9 +218,6 @@ public class HeapFile implements DbFile {
     	 */
     	private boolean opened;
     	
-    	/** The TupleDesc associated with tuples in this file. */
-    	private TupleDesc td;
-    	
     	/** Read only or read/write for some given instance */
     	private Permissions permission;
     	
@@ -232,8 +229,6 @@ public class HeapFile implements DbFile {
     	 * Constructs a new iterator for this HeapFile.
     	 * 
     	 * @param tid	transaction id provided by caller
-    	 * @param hf	file to iterate over
-    	 * @param td	TupleDesc for the file to iterate over
     	 * @param p		permission of the iterator
     	 */
     	private HeapFileIterator(TransactionId tid, Permissions p) {
@@ -339,7 +334,8 @@ public class HeapFile implements DbFile {
     	 * 
     	 * @throws UnsupportedOperationException
     	 */
-    	public void remove() throws UnsupportedOperationException {
+    	@SuppressWarnings("unused")
+		public void remove() throws UnsupportedOperationException {
     		throw new UnsupportedOperationException("removed not supported");
     	} // end remove()
     } // end HeapFileIterator
