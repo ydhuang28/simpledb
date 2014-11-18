@@ -99,7 +99,13 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
     	
-    	lm.acquireLock(pid, tid, true);
+    	// acquire locks
+    	if (perm.equals(Permissions.READ_WRITE)) {
+    		lm.acquireLock(pid, tid, true);		// exclusive
+    	} else {
+    		lm.acquireLock(pid, tid, false);	// shared
+    	}
+    	
         
     	// find page in buffer if exists
     	if (buffer.containsKey(pid)) {
@@ -293,19 +299,24 @@ public class BufferPool {
      */
     private synchronized void evictPage() throws DbException {
         long earliest = Long.MAX_VALUE;
-        PageId earliestPid = null;
+        PageId earliestPidNotDirty = null;
     	for (PageId pid : pageTime.keySet()) {
+    		Page p = buffer.get(pid);
     		long time = pageTime.get(pid);
-    		if (time < earliest) {
-    			earliestPid = pid;
+    		if (time < earliest && p.isDirty() == null) {
+    			earliestPidNotDirty = pid;
     			earliest = time;
     		}
     	}
     	
+    	if (earliestPidNotDirty == null) {
+    		throw new DbException("all pages dirty, cannot evict");
+    	}
+    	
     	try {
-    		flushPage(earliestPid);							// try flushing
-    		pageTime.remove(earliestPid);
-    		buffer.remove(earliestPid);
+    		flushPage(earliestPidNotDirty);							// try flushing
+    		pageTime.remove(earliestPidNotDirty);
+    		buffer.remove(earliestPidNotDirty);
     	} catch (IOException ioe) {
     		throw new DbException("could not evict page");	// throw exception if fail
     	}

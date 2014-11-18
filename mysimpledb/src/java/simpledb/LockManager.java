@@ -35,49 +35,63 @@ public class LockManager {
 	 * 
 	 * @param lock pageid for the page to which the lock belongs
 	 * @param isExclusive whether the request is exclusive
-	 * @return
+	 * @return whether the lock is free given input
 	 */
-	private boolean isLockFree(PageId lock, boolean isExclusive) {
+	private boolean isLockFree(PageId lock, TransactionId tid, boolean isExclusive) {
 		LinkedList<LockTableEntry> entries = lockTable.get(lock);
 		
 		// if no entries then yes
 		if (entries == null) {
-			System.out.println("no entries!");
 			lockTable.put(lock, new LinkedList<LockTableEntry>());
 			return true;
+		}
+		
+		// if any lock holder is exclusive, lock is not free
+		// if lock holder is same as the one requesting, lock is free
+		boolean upgrade = false;
+		for (int i = 0; i < entries.size(); i++) {
+			LockTableEntry e = entries.get(i);
+			if (e.tid.equals(tid)) {
+				if (e.isGranted) {
+					// upgrade!
+					if (!e.isExclusive && isExclusive) {
+						entries.remove(e);
+						entries.add(0, new LockTableEntry(isExclusive, true, tid));
+						return true;
+					} else {	// if duplicate request or write -> read, free
+						return true;
+					}
+				}
+			} else {
+				// exclusive lock! not free
+				if (e.isExclusive && e.isGranted) {
+					return false;
+				}
+			}
 		}
 		
 		// if any lock holder exists and the request is
 		// for an exclusive lock, lock is not free
 		if (!entries.isEmpty() && isExclusive) return false;
 		
-		// if any lock holder is exclusive, lock is not free
-		for (LockTableEntry e : entries) {
-			if (e.isExclusive()) {
-				return false;
-			}
-		}
-		
 		// otherwise lock is free
 		return true;
 	} // end isLockFree(PageId, boolean)
 	
-	private void addToQueue(PageId lock, TransactionId tid, boolean excl) {
-		
-	} // end addToQueue(PageId, TransactionId, boolean)
-	
 	
 	public void acquireLock(PageId pid, TransactionId tid, boolean excl) {
 		synchronized (this) {
-			System.out.println("checking");
-			if (!isLockFree(pid, excl)) {
+			if (!isLockFree(pid, tid, excl)) {
 				lockTable.get(pid).add(new LockTableEntry(excl, false, tid));
 			} else {
-				lockTable.get(pid).add(new LockTableEntry(excl, true, tid));
+				LinkedList<LockTableEntry> entries = lockTable.get(pid);
+				LockTableEntry newEntry = new LockTableEntry(excl, true, tid);
+				if (!entries.contains(newEntry)) {	// for upgrade, already exists
+					entries.add(new LockTableEntry(excl, true, tid));
+				}
 				return;
 			}
-			while (!isLockFree(pid, excl)) {
-				System.out.println("sleeping");
+			while (!isLockFree(pid, tid, excl)) {
 				try {
 					Thread.sleep(1);
 				} catch (InterruptedException e) {}
@@ -93,7 +107,7 @@ public class LockManager {
 		
 		LockTableEntry target = null;
 		for (LockTableEntry e : entries) {
-			if (e.getTransactionId().equals(tid)) {
+			if (e.tid.equals(tid)) {
 				target = e;
 			}
 		}
@@ -112,7 +126,7 @@ public class LockManager {
 	public synchronized boolean holdsLock(TransactionId tid, PageId p) {
 		LinkedList<LockTableEntry> entries = lockTable.get(p);
 		for (LockTableEntry e : entries) {
-			if (e.getTransactionId().equals(tid) && e.isGranted()) {
+			if (e.tid.equals(tid) && e.isGranted) {
 				return true;
 			}
 		}
@@ -131,38 +145,12 @@ public class LockManager {
 		boolean isExclusive;
 		boolean isGranted;
 		final TransactionId tid;
-		
-		LockTableEntry() {
-			isExclusive = false;
-			isGranted = false;
-			tid = null;
-		}
-		
+
 		LockTableEntry(boolean excl, boolean grnted, TransactionId tid) {
 			isExclusive = excl;
 			isGranted = grnted;
 			this.tid = tid;
 		} // end LockTableEntry(boolean, boolean)
-		
-		boolean isExclusive() {
-			return isExclusive;
-		}
-		
-		void setExclusive(boolean v) {
-			isExclusive = v;
-		}
-		
-		boolean isGranted() {
-			return isGranted;
-		}
-		
-		void setGranted(boolean v) {
-			isGranted = v;
-		}
-		
-		TransactionId getTransactionId() {
-			return tid;
-		}
 		
 	} // end LockTableEntry
 
