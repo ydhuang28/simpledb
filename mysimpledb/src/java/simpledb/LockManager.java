@@ -97,6 +97,14 @@ public class LockManager {
 	} // end isLockFree(PageId, boolean)
 	
 	
+	/**
+	 * Tries to acquire a lock (type given by <code>excl</code>)
+	 * on a given page 
+	 * 
+	 * @param pid the page that the transaction tries to obtain a lock on
+	 * @param tid the given transaction
+	 * @param excl whether the lock to acquire is exclusive
+	 */
 	public synchronized void acquireLock(PageId pid, TransactionId tid, boolean excl) {
 		if (!isLockFree(pid, tid, excl)) {
 			lockTable.get(pid).add(new LockTableEntry(excl, false, tid));
@@ -118,6 +126,12 @@ public class LockManager {
 	} // end acquireLock(PageId, TransactionId)
 	
 	
+	/**
+	 * Releases a certain lock on a page that a transaction holds.
+	 * 
+	 * @param pid the page that the given transaction holds lock on
+	 * @param tid TransactionId of the given transaction
+	 */
 	public synchronized void releaseLock(PageId pid, TransactionId tid) {
 		LinkedList<LockTableEntry> entries = lockTable.get(pid);
 		
@@ -134,6 +148,13 @@ public class LockManager {
 	} // end releaseLock(PageId, TransactionId)
 	
 	
+	/**
+	 * Releases all locks, granted or not, held by a transaction.
+	 * 
+	 * This is only called when transaction commits/aborts.
+	 * 
+	 * @param tid TransactionId of transaction of which to release all locks
+	 */
 	public synchronized void releaseAllLocks(TransactionId tid) {
 		for (PageId pid : lockTable.keySet()) {
 			LinkedList<LockTableEntry> entries = lockTable.get(pid);
@@ -148,6 +169,14 @@ public class LockManager {
 	} // end releaseAllLocks(TransactionId)
 	
 	
+	/**
+	 * Checks whether a given transaction holds a lock on a
+	 * given page or not.
+	 * 
+	 * @param tid TransactionId of the given transaction
+	 * @param p PageId of the page to check
+	 * @return true if tid holds lock on p, false otherwise
+	 */
 	public synchronized boolean holdsLock(TransactionId tid, PageId p) {
 		LinkedList<LockTableEntry> entries = lockTable.get(p);
 		for (LockTableEntry e : entries) {
@@ -156,7 +185,7 @@ public class LockManager {
 			}
 		}
 		return false;
-	}
+	} // end holdsLock(TransactionId, PageId)
 	
 	
 	/** 
@@ -171,6 +200,9 @@ public class LockManager {
 		boolean isGranted;
 		final TransactionId tid;
 
+		/**
+		 * Constructor. 
+		 */
 		LockTableEntry(boolean excl, boolean grnted, TransactionId tid) {
 			isExclusive = excl;
 			isGranted = grnted;
