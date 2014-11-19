@@ -1,6 +1,7 @@
 package simpledb;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -81,8 +82,12 @@ public class LockManager {
 		if (upgrade) {
 			if (lastSharedGranted != -1) {
 				entries.remove(upgradeToRemove);
-				entries.add(lastSharedGranted + 1,
-						new LockTableEntry(isExclusive, false, tid));
+				if (lastSharedGranted == entries.size()) {
+					entries.add(new LockTableEntry(isExclusive, false, tid));
+				} else { 
+					entries.add(lastSharedGranted + 1,
+							new LockTableEntry(isExclusive, false, tid));
+				}
 				return false;
 			}
 			else return true;
@@ -105,7 +110,11 @@ public class LockManager {
 	 * @param tid the given transaction
 	 * @param excl whether the lock to acquire is exclusive
 	 */
-	public synchronized void acquireLock(PageId pid, TransactionId tid, boolean excl) {
+	public synchronized void acquireLock(PageId pid,
+										 TransactionId tid,
+										 boolean excl)
+			throws TransactionAbortedException, DbException {
+		
 		if (!isLockFree(pid, tid, excl)) {
 			lockTable.get(pid).add(new LockTableEntry(excl, false, tid));
 		} else {
@@ -116,11 +125,23 @@ public class LockManager {
 			}
 			return;
 		}
+		
+		// timeouts; deadlock resolution
+		long timeWaited = 0;
+		long lastChecked = System.currentTimeMillis();
 		while (!isLockFree(pid, tid, excl)) {
 			try {
 				Thread.sleep(1);
+				long now = System.currentTimeMillis();
+				long elapsed = now - lastChecked;
+				timeWaited += elapsed;
+				if (timeWaited >= TIMEOUT) {
+					throw new TransactionAbortedException();
+				}
+				lastChecked = now;
 			} catch (InterruptedException e) {}
 		}
+		
 		// lock is free! grab it.
 		lockTable.get(pid).add(new LockTableEntry(excl, true, tid));
 	} // end acquireLock(PageId, TransactionId)
@@ -159,11 +180,15 @@ public class LockManager {
 		for (PageId pid : lockTable.keySet()) {
 			LinkedList<LockTableEntry> entries = lockTable.get(pid);
 			
-			for (int i = 0; i < entries.size(); i++) {
-				LockTableEntry e = entries.get(i);
+			HashSet<LockTableEntry> toRemove = new HashSet<LockTableEntry>();
+			for (LockTableEntry e : entries) {
 				if (e.tid.equals(tid)) {
-					entries.remove(e);
+					toRemove.add(e);
 				}
+			}
+			
+			for (LockTableEntry e : toRemove) {
+				entries.remove(e);
 			}
 		}
 	} // end releaseAllLocks(TransactionId)
