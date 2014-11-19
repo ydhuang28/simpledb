@@ -31,7 +31,9 @@ public class LockManager {
 	
 	
 	/**
-	 * Abstraction to check whether a lock of a page is free
+	 * Abstraction to check whether a lock of a page is free.
+	 * 
+	 * ONLY CALL THIS METHOD IN A SYNCHRONIZED METHOD!!!!!
 	 * 
 	 * @param lock pageid for the page to which the lock belongs
 	 * @param isExclusive whether the request is exclusive
@@ -49,25 +51,41 @@ public class LockManager {
 		// if any lock holder is exclusive, lock is not free
 		// if lock holder is same as the one requesting, lock is free
 		boolean upgrade = false;
+		LockTableEntry upgradeToRemove = null;
+		int lastSharedGranted = -1;
 		for (int i = 0; i < entries.size(); i++) {
 			LockTableEntry e = entries.get(i);
 			if (e.tid.equals(tid)) {
 				if (e.isGranted) {
 					// upgrade!
 					if (!e.isExclusive && isExclusive) {
-						entries.remove(e);
-						entries.add(0, new LockTableEntry(isExclusive, true, tid));
-						return true;
+						upgrade = true;
+						upgradeToRemove = e;
 					} else {	// if duplicate request or write -> read, free
 						return true;
 					}
 				}
 			} else {
+				// shared lock! record lastSharedGranted
+				if (!e.isExclusive && e.isGranted) {
+					lastSharedGranted = i;
+				}
+				
 				// exclusive lock! not free
 				if (e.isExclusive && e.isGranted) {
 					return false;
 				}
 			}
+		}
+		
+		if (upgrade) {
+			if (lastSharedGranted != -1) {
+				entries.remove(upgradeToRemove);
+				entries.add(lastSharedGranted + 1,
+						new LockTableEntry(isExclusive, false, tid));
+				return false;
+			}
+			else return true;
 		}
 		
 		// if any lock holder exists and the request is
@@ -79,26 +97,24 @@ public class LockManager {
 	} // end isLockFree(PageId, boolean)
 	
 	
-	public void acquireLock(PageId pid, TransactionId tid, boolean excl) {
-		synchronized (this) {
-			if (!isLockFree(pid, tid, excl)) {
-				lockTable.get(pid).add(new LockTableEntry(excl, false, tid));
-			} else {
-				LinkedList<LockTableEntry> entries = lockTable.get(pid);
-				LockTableEntry newEntry = new LockTableEntry(excl, true, tid);
-				if (!entries.contains(newEntry)) {	// for upgrade, already exists
-					entries.add(new LockTableEntry(excl, true, tid));
-				}
-				return;
+	public synchronized void acquireLock(PageId pid, TransactionId tid, boolean excl) {
+		if (!isLockFree(pid, tid, excl)) {
+			lockTable.get(pid).add(new LockTableEntry(excl, false, tid));
+		} else {
+			LinkedList<LockTableEntry> entries = lockTable.get(pid);
+			LockTableEntry newEntry = new LockTableEntry(excl, true, tid);
+			if (!entries.contains(newEntry)) {	// for upgrade, already exists
+				entries.add(new LockTableEntry(excl, true, tid));
 			}
-			while (!isLockFree(pid, tid, excl)) {
-				try {
-					Thread.sleep(1);
-				} catch (InterruptedException e) {}
-			}
-			// lock is free! grab it.
-			lockTable.get(pid).add(new LockTableEntry(excl, true, tid));
+			return;
 		}
+		while (!isLockFree(pid, tid, excl)) {
+			try {
+				Thread.sleep(1);
+			} catch (InterruptedException e) {}
+		}
+		// lock is free! grab it.
+		lockTable.get(pid).add(new LockTableEntry(excl, true, tid));
 	} // end acquireLock(PageId, TransactionId)
 	
 	
@@ -119,7 +135,16 @@ public class LockManager {
 	
 	
 	public synchronized void releaseAllLocks(TransactionId tid) {
-		throw new UnsupportedOperationException();
+		for (PageId pid : lockTable.keySet()) {
+			LinkedList<LockTableEntry> entries = lockTable.get(pid);
+			
+			for (int i = 0; i < entries.size(); i++) {
+				LockTableEntry e = entries.get(i);
+				if (e.tid.equals(tid)) {
+					entries.remove(e);
+				}
+			}
+		}
 	} // end releaseAllLocks(TransactionId)
 	
 	

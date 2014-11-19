@@ -155,8 +155,7 @@ public class BufferPool {
      * @param tid the ID of the transaction requesting the unlock
      */
     public void transactionComplete(TransactionId tid) throws IOException {
-        // some code goes here
-        // not necessary for lab1|lab2|lab3|lab4
+        transactionComplete(tid, true);
     } // end transactionComplete(TransactionId)
 
     
@@ -177,8 +176,16 @@ public class BufferPool {
      */
     public void transactionComplete(TransactionId tid, boolean commit)
             throws IOException {
-        // some code goes here
-        // not necessary for lab1|lab2|lab3|lab4
+        for (PageId pid : buffer.keySet()) {
+        	Page p = buffer.get(pid);
+        	TransactionId tidDirtied = p.isDirty();
+        	if (tidDirtied != null && tid.equals(p.isDirty())) {
+        		if (commit) flushPage(pid);
+        		else discardPage(pid);
+        	}
+        }
+        
+        lm.releaseAllLocks(tid);
     } // end transactionComplete(TransactionId, boolean)
 
     
@@ -259,8 +266,8 @@ public class BufferPool {
      * cache.
      */
     public synchronized void discardPage(PageId pid) {
-        // some code goes here
-        // only necessary for lab6
+        buffer.remove(pid);
+        pageTime.remove(pid);
     } // end discardPage(PageId)
 
     
