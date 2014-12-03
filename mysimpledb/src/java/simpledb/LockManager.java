@@ -13,7 +13,7 @@ import java.util.Map;
 public class LockManager {
 	
 	/** The number of milliseconds that a transaction has before timing out. */
-	public static final long TIMEOUT = 2000;	// 2 seconds
+	public static final long TIMEOUT = 600;	// 0.6 seconds
 	
 	/**
 	 * Lock table. Each page has a lock and a queue of transactions
@@ -116,12 +116,16 @@ public class LockManager {
 			throws TransactionAbortedException, DbException {
 		
 		if (!isLockFree(pid, tid, excl)) {
-			lockTable.get(pid).add(new LockTableEntry(excl, false, tid));
+			LinkedList<LockTableEntry> entries = lockTable.get(pid);
+			LockTableEntry newEntry = new LockTableEntry(excl, false, tid);
+			if (!entries.contains(newEntry)) {
+				entries.add(newEntry);
+			}
 		} else {
 			LinkedList<LockTableEntry> entries = lockTable.get(pid);
 			LockTableEntry newEntry = new LockTableEntry(excl, true, tid);
 			if (!entries.contains(newEntry)) {	// for upgrade, already exists
-				entries.add(new LockTableEntry(excl, true, tid));
+				entries.add(newEntry);
 			}
 			return;
 		}

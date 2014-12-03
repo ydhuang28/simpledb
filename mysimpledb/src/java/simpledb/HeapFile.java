@@ -130,27 +130,40 @@ public class HeapFile implements DbFile {
     		throw new DbException("TupleDesc mismatch");
     	}
     	
+    	BufferPool bp = Database.getBufferPool();
+    	
     	// look for page with empty slot(s)
     	int pgNo = 0;
     	ArrayList<Page> rv = new ArrayList<Page>();
     	for (; pgNo < this.numPages(); pgNo++) {
     		HeapPageId pid = new HeapPageId(getId(), pgNo);
-    		HeapPage page = (HeapPage) Database.getBufferPool()
-    				.getPage(tid, pid, Permissions.READ_WRITE);
+    		
+    		// check if current transaction holds lock
+    		// if not get read lock
+    		// but not using holdsLock is okay!
+    		// because duplicate requests would return
+    		// that the lock is free. so we get the read
+    		// lock no matter what.
+    		HeapPage page = (HeapPage) bp.getPage(tid, pid, Permissions.READ_ONLY);
+    		
     		
     		// find page with empty slot
     		if (page.getNumEmptySlots() != 0) {
-    			assert page.getNumEmptySlots() != 0;
+    			page = (HeapPage) bp.getPage(tid, pid, Permissions.READ_WRITE);
     			page.insertTuple(t);
     			rv.add(page);
     			return rv;
     		}
+    		
+    		// release read lock because not needed any more.
+    		if (bp.holdsLock(tid, pid)) {
+    			bp.releasePage(tid, pid);
+    		}
     	}
     	
     	// no page with empty slot! create new page
-    	HeapPage newpage = new HeapPage(new HeapPageId(getId(), pgNo),
-    			HeapPage.createEmptyPageData());
-    	newpage.insertTuple(t);
+    	HeapPageId pid = new HeapPageId(getId(), pgNo);
+    	HeapPage newpage = new HeapPage(pid, HeapPage.createEmptyPageData());
     	
     	// begin write out
     	BufferedOutputStream bos = new BufferedOutputStream(
@@ -158,6 +171,12 @@ public class HeapFile implements DbFile {
     	bos.write(newpage.getPageData());
     	bos.flush();
     	bos.close();
+    	
+    	// get lock on new page!
+    	newpage = (HeapPage) bp.getPage(tid, pid, Permissions.READ_WRITE);
+    	
+    	// insert tuple
+    	newpage.insertTuple(t);
     	
     	// return modified page
     	rv.add(newpage);
