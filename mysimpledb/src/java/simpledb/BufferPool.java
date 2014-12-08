@@ -126,7 +126,9 @@ public class BufferPool {
     	
     	// read page, put in buffer
     	Page rv = dbfile.readPage(pid);
-    	buffer.put(pid, rv);
+    	synchronized (this.buffer) {
+    		buffer.put(pid, rv);
+    	}
     	pageTime.put(pid, System.currentTimeMillis());
     	
     	assert buffer.size() <= numPages;	// test size after
@@ -210,7 +212,9 @@ public class BufferPool {
         ArrayList<Page> modified = f.insertTuple(tid, t);
         for (Page p : modified) {
         	p.markDirty(true, tid);		// mark modified page dirty
-        	buffer.put(p.getId(), p);	// update cached version(s)
+        	synchronized (this.buffer) {
+        		buffer.put(p.getId(), p);	// update cached version(s)
+        	}
         }
     } // end insertTuple(TransactionId, int, Tuple)
 
@@ -243,7 +247,9 @@ public class BufferPool {
     	p.markDirty(true, tid);
     	
     	// update cached version(s)
-    	buffer.put(p.getId(), p);
+    	synchronized (this.buffer) {
+    		buffer.put(p.getId(), p);
+    	}    	
     } // end deleteTuple(TransactionId, Tuple)
 
     

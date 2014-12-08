@@ -34,13 +34,13 @@ public class LockManager {
 	/**
 	 * Abstraction to check whether a lock of a page is free.
 	 * 
-	 * ONLY CALL THIS METHOD IN A SYNCHRONIZED METHOD!!!!!
-	 * 
 	 * @param lock pageid for the page to which the lock belongs
 	 * @param isExclusive whether the request is exclusive
 	 * @return whether the lock is free given input
 	 */
-	private boolean isLockFree(PageId lock, TransactionId tid, boolean isExclusive) {
+	private synchronized boolean isLockFree(PageId lock,
+											TransactionId tid,
+											boolean isExclusive) {
 		LinkedList<LockTableEntry> entries = lockTable.get(lock);
 		
 		// if no entries then yes
@@ -110,24 +110,26 @@ public class LockManager {
 	 * @param tid the given transaction
 	 * @param excl whether the lock to acquire is exclusive
 	 */
-	public synchronized void acquireLock(PageId pid,
-										 TransactionId tid,
-										 boolean excl)
+	public void acquireLock(PageId pid,
+							TransactionId tid,
+							boolean excl)
 			throws TransactionAbortedException, DbException {
 		
-		if (!isLockFree(pid, tid, excl)) {
-			LinkedList<LockTableEntry> entries = lockTable.get(pid);
-			LockTableEntry newEntry = new LockTableEntry(excl, false, tid);
-			if (!entries.contains(newEntry)) {
-				entries.add(newEntry);
+		synchronized (this.lockTable) {
+			if (!isLockFree(pid, tid, excl)) {
+				LinkedList<LockTableEntry> entries = lockTable.get(pid);
+				LockTableEntry newEntry = new LockTableEntry(excl, false, tid);
+				if (!entries.contains(newEntry)) {
+					entries.add(newEntry);
+				}
+			} else {
+				LinkedList<LockTableEntry> entries = lockTable.get(pid);
+				LockTableEntry newEntry = new LockTableEntry(excl, true, tid);
+				if (!entries.contains(newEntry)) {	// for upgrade, already exists
+					entries.add(newEntry);
+				}
+				return;
 			}
-		} else {
-			LinkedList<LockTableEntry> entries = lockTable.get(pid);
-			LockTableEntry newEntry = new LockTableEntry(excl, true, tid);
-			if (!entries.contains(newEntry)) {	// for upgrade, already exists
-				entries.add(newEntry);
-			}
-			return;
 		}
 		
 		// timeouts; deadlock resolution
@@ -147,7 +149,9 @@ public class LockManager {
 		}
 		
 		// lock is free! grab it.
-		lockTable.get(pid).add(new LockTableEntry(excl, true, tid));
+		synchronized (this.lockTable) {
+			lockTable.get(pid).add(new LockTableEntry(excl, true, tid));
+		}
 	} // end acquireLock(PageId, TransactionId)
 	
 	
