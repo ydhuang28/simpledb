@@ -182,7 +182,13 @@ public class BufferPool {
         	Page p = buffer.get(pid);
         	TransactionId tidDirtied = p.isDirty();
         	if (tidDirtied != null && tid.equals(p.isDirty())) {
-        		if (commit) flushPage(pid);
+        		if (commit) {
+        			// use current page contents as the before-image
+        	        // for the next transaction that modifies this page.
+        	        p.setBeforeImage();
+        	        
+        			flushPage(pid);
+        		}
         		else discardPage(pid);
         	}
         }
@@ -291,6 +297,17 @@ public class BufferPool {
         	// write page to disk
             Catalog c = Database.getCatalog();
             DbFile f = c.getDatabaseFile(tableId);
+            
+            // append an update record to the log, with 
+            // a before-image and after-image.
+            TransactionId dirtier = pToFlush.isDirty();
+            if (dirtier != null) {
+            	Database.getLogFile().logWrite(dirtier,
+            			pToFlush.getBeforeImage(), pToFlush);
+            	Database.getLogFile().force();
+            }
+            
+            // write page
             f.writePage(pToFlush);
             pToFlush.markDirty(false, null);
     	}
