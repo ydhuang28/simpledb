@@ -180,15 +180,13 @@ public class BufferPool {
             throws IOException {
         for (PageId pid : buffer.keySet()) {
         	Page p = buffer.get(pid);
+        	if (commit && holdsLock(tid, pid)) {
+        		p.setBeforeImage();
+        	}
+        	
         	TransactionId tidDirtied = p.isDirty();
         	if (tidDirtied != null && tid.equals(p.isDirty())) {
-        		if (commit) {
-        			// use current page contents as the before-image
-        	        // for the next transaction that modifies this page.
-        	        p.setBeforeImage();
-        	        
-        			flushPage(pid);
-        		}
+        		if (commit) flushPage(pid);
         		else discardPage(pid);
         	}
         }

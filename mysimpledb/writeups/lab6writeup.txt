@@ -7,18 +7,24 @@ Exercise 1.
    log records are written to the log.  Use Eclipse search tools to find
    all uses of the LogFile methods in the SimpleDB source code.
 
-    <Replace this text with your answer>
+   	When the transaction starts, a BEGIN is written to the log. When
+   	the transaction either commits or aborts, the corresponding COMMIT or
+   	ABORT is written to the log. When a page is flushed, an UPDATE is written
+   	to the log. And when a log shuts down, a checkpoint is written so that
+   	everything gets flushed to disk.
 
 
 2. Where is LogFile.force called?  You should include usages inside other
    LogFile methods.  For each usage, why is it important that force is called?
 
-    <Replace this text with your answer>
+    Basically, force() is called whenever data is being written to disk.
+    Specifically, it is called in BufferPool.flushPage(), and in logAbort(),
+    logCheckpoint(), and logCommit(); all these methods write data to disk.
 
 
 3. Where is setBeforeImage image called?  
 
-    <Replace this text with your answer>
+    In BufferPool.transactionComplete().
 
 
 Exercise 4.

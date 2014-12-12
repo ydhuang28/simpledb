@@ -212,7 +212,7 @@ public class LogFile {
     }
 
     /**
-     * Write a commit record to disk for the specified tid,
+     * Write an abort record to disk for the specified tid,
      * and force the log to disk.
      *
      * @param tid The committing transaction.  Need long because may
