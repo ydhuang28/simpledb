@@ -4,6 +4,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -178,7 +179,8 @@ public class BufferPool {
      */
     public void transactionComplete(TransactionId tid, boolean commit)
             throws IOException {
-        for (PageId pid : buffer.keySet()) {
+    	Set<PageId> keySet = buffer.keySet();
+        for (PageId pid : keySet) {
         	Page p = buffer.get(pid);
         	if (commit && holdsLock(tid, pid)) {
         		p.setBeforeImage();
