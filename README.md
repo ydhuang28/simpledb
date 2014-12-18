@@ -6,4 +6,4 @@ A rudimentary database written in Java. For COSC 460, Database Management System
 
 <p>
 Authors/Contributors: Yuxin (David) Huang, Jiayang Li, Sam Madden, Michael Hay
-</p 
+</p>
